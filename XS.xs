@@ -240,7 +240,6 @@ INIT:
     const autoxs_hashkey readfrom = CXSAccessor_hashkeys[ix];
     SV** svp;
 PPCODE:
-    warn("Access via Mojo::Base::XS!");
     ACCESSOR_BODY
 
 
