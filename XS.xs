@@ -155,65 +155,63 @@ __entersub_optimized__()
       PUSHs(self);                                                           \
       XSRETURN(1);                                                           \
     }                                                                        \
-    else {                                                                   \
-        if (readfrom.default_value != NULL &&                                \
-           !hv_common_key_len(                                               \
-                object, readfrom.accessor_name, readfrom.accessor_len,       \
-                HV_FETCH_ISEXISTS, NULL, readfrom.hash))                     \
-        {                                                                    \
-            if (readfrom.default_coderef) {                                  \
-                /* Coderef to generate defautl value */                      \
-                SV *retval =  NULL;                                          \
-              {                                                              \
-                dSP;                                                         \
-                I32 ax;                                                      \
-                ENTER;                                                       \
-                SAVETMPS;                                                    \
-                PUSHMARK(SP);                                                \
-                XPUSHs(self);                                                \
-                PUTBACK;                                                     \
-                int number = call_sv(SvRV(readfrom.default_value), G_SCALAR);\
-                SPAGAIN;                                                     \
-                SP -= number;                                                \
-                ax = (SP - PL_stack_base) + 1;                               \
-                if (number > 0) {                                            \
-                    retval = ST(0);                                          \
-                } else {                                                     \
-                    XSRETURN_UNDEF;                                          \
-                }                                                            \
-                if (!hv_store(                                               \
-                    object, readfrom.accessor_name, readfrom.accessor_len,   \
-                    retval, readfrom.hash)) {                                \
-                    croak("hv_store failed");                                \
-                    XSRETURN_UNDEF;                                          \
-                }                                                            \
-                SvREFCNT_inc(retval);                                        \
-                PUTBACK;                                                     \
-                FREETMPS;                                                    \
-                LEAVE;                                                       \
-              }                                                              \
-                PUSHs(retval);                                               \
-                XSRETURN(1);                                                 \
+                                                                             \
+    if ((svp = CXSA_HASH_FETCH(                                              \
+            object, readfrom.accessor_name, readfrom.accessor_len,           \
+            readfrom.hash)))                                                 \
+    {                                                                        \
+        PUSHs(*svp);                                                         \
+        XSRETURN(1);                                                         \
+    }                                                                        \
+                                                                             \
+    if (readfrom.default_value != NULL &&                                    \
+        !hv_common_key_len(                                                  \
+            object, readfrom.accessor_name, readfrom.accessor_len,           \
+            HV_FETCH_ISEXISTS, NULL, readfrom.hash))                         \
+    {                                                                        \
+        if (readfrom.default_coderef) {                                      \
+            /* Coderef to generate defautl value */                          \
+            SV *retval =  NULL;                                              \
+          {                                                                  \
+            dSP;                                                             \
+            I32 ax;                                                          \
+            ENTER;                                                           \
+            SAVETMPS;                                                        \
+            PUSHMARK(SP);                                                    \
+            XPUSHs(self);                                                    \
+            PUTBACK;                                                         \
+            int number = call_sv(SvRV(readfrom.default_value), G_SCALAR);    \
+            SPAGAIN;                                                         \
+            SP -= number;                                                    \
+            ax = (SP - PL_stack_base) + 1;                                   \
+            if (number > 0) {                                                \
+                retval = ST(0);                                              \
             } else {                                                         \
-                SV **retval = hv_store(                                      \
-                    object, readfrom.accessor_name, readfrom.accessor_len,   \
-                    readfrom.default_value, readfrom.hash);                  \
-                SvREFCNT_inc(*retval);                                       \
-                PUSHs(*retval);                                              \
-                XSRETURN(1);                                                 \
+                XSRETURN_UNDEF;                                              \
             }                                                                \
-        }                                                                    \
-        if ((svp = CXSA_HASH_FETCH(                                          \
+            if (!hv_store(                                                   \
                 object, readfrom.accessor_name, readfrom.accessor_len,       \
-                readfrom.hash)))                                             \
-        {                                                                    \
-            PUSHs(*svp);                                                     \
+                retval, readfrom.hash)) {                                    \
+                croak("hv_store failed");                                    \
+                XSRETURN_UNDEF;                                              \
+            }                                                                \
+            SvREFCNT_inc(retval);                                            \
+            PUTBACK;                                                         \
+            FREETMPS;                                                        \
+            LEAVE;                                                           \
+          }                                                                  \
+          PUSHs(retval);                                                     \
+          XSRETURN(1);                                                       \
+        } else {                                                             \
+            SV **retval = hv_store(                                          \
+                object, readfrom.accessor_name, readfrom.accessor_len,       \
+                readfrom.default_value, readfrom.hash);                      \
+            SvREFCNT_inc(*retval);                                           \
+            PUSHs(*retval);                                                  \
             XSRETURN(1);                                                     \
         }                                                                    \
-        else {                                                               \
-            XSRETURN_UNDEF;                                                  \
-        }                                                                    \
     }                                                                        \
+    XSRETURN_UNDEF;                                                          \
 
 void
 accessor_init(self, ...)
@@ -275,38 +273,38 @@ CODE:
     }
     PUSHs(caller_obj);
 
-#define CONSTRUCTOR_BODY                                                     \
-    classname = SvROK(class)       ?                                         \
-        sv_reftype(SvRV(class), 1) :                                         \
-        SvPV_nolen_const(class);                                             \
-    hash = newHV();                                                          \
-    if (items > 2) {                                                         \
-        for (iStack = 1; iStack < items; iStack += 2) {                      \
-            /* we could check for the hv_store_ent return value,          */ \
-            /* but perl doesn't in this situation (see pp_anonhash)       */ \
-            (void)hv_store_ent(                                              \
-                hash, ST(iStack),                                            \
-                newSVsv(iStack > items ? &PL_sv_undef : ST(iStack+1)), 0);   \
-        }                                                                    \
-    } else if (items > 1) {                                                  \
-        HV *hv_hashopt;                                                      \
-        SV *optref = ST(1);                                                  \
-        if (SvROK(optref) &&                                                 \
-            SvTYPE((hv_hashopt = (HV*)SvRV(optref))) == SVt_PVHV) {          \
-            I32 key_len;                                                     \
-            char *key;                                                       \
-            SV *val;                                                         \
-            hv_iterinit(hv_hashopt);                                         \
-            while ((val = hv_iternextsv(hv_hashopt, &key, &key_len))) {      \
-                (void)hv_common_key_len(                                     \
-                    hash, key, key_len,  HV_FETCH_ISSTORE, newSVsv(val), 0); \
-            }                                                                \
-        } else {                                                             \
-            croak("Not a hash reference");                                   \
-        }                                                                    \
-    }                                                                        \
-    obj = sv_bless(newRV_noinc((SV *)hash), gv_stashpv(classname, 1));       \
-    PUSHs(sv_2mortal(obj));                                                  \
+#define CONSTRUCTOR_BODY                                                         \
+    classname = SvROK(class)       ?                                             \
+        sv_reftype(SvRV(class), 1) :                                             \
+        SvPV_nolen_const(class);                                                 \
+    hash = newHV();                                                              \
+    if (items > 2) {                                                             \
+        for (iStack = 1; iStack < items; iStack += 2) {                          \
+            /* we could check for the hv_store_ent return value,          */     \
+            /* but perl doesn't in this situation (see pp_anonhash)       */     \
+            (void)hv_store_ent(                                                  \
+                hash, ST(iStack),                                                \
+                newSVsv(iStack > items ? &PL_sv_undef : ST(iStack+1)), 0);       \
+        }                                                                        \
+    } else if (items > 1) {                                                      \
+        HV *hv_hashopt;                                                          \
+        SV *optref = ST(1);                                                      \
+        if (SvROK(optref) &&                                                     \
+            SvTYPE((hv_hashopt = (HV*)SvRV(optref))) == SVt_PVHV) {              \
+            I32 key_len;                                                         \
+            char *key;                                                           \
+            SV *val;                                                             \
+            hv_iterinit(hv_hashopt);                                             \
+            while ((val = hv_iternextsv(hv_hashopt, &key, &key_len))) {          \
+                (void)hv_common_key_len(                                         \
+                    hash, key, key_len,  HV_FETCH_ISSTORE, newSVsv(val), 0);     \
+            }                                                                    \
+        } else {                                                                 \
+            croak("Not a hash reference");                                       \
+        }                                                                        \
+    }                                                                            \
+    obj = sv_bless(newRV_noinc((SV *)hash), gv_stashpv(classname, 1));           \
+    PUSHs(sv_2mortal(obj));                                                      \
 
 void
 constructor_init(class, ...)
