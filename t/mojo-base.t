@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-use Mojo::Base::XS infect => 1;
+use Mojo::Base::XS -infect;
 use Test::More;
 
 eval { require Mojo::Base };
