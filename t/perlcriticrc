@@ -1,0 +1,6 @@
+verbose = 6
+include = Mojo::Base::XS
+
+[TestingAndDebugging::ProhibitNoStrict]
+allow = refs
+

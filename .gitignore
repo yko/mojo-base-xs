@@ -1,0 +1,13 @@
+.*
+!.gitignore
+!.perltidyrc
+Makefile
+Makefile.old
+blib*
+pm_to_blib*
+*.bak
+*.tar.gz
+*META.yml
+MANIFEST*
+!MANIFEST.SKIP
+mojo-base-xs-*

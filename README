@@ -1,0 +1,51 @@
+NAME
+
+    Mojo::Base::XS - very fast Mojo-styled accessors
+
+INSTALLATION
+
+        perl Makefile.PL
+        make
+        make test
+        make install
+
+SYNOPSIS
+
+        # Replace Mojo::Base
+        package Foo;
+        use Mojo::Base::XS infect => 1;
+        use Mojo::Base;
+
+        has foo => 'bar';
+        has [qw/x y z/] => 42;
+        has foo_defaults => sub { Bar->new };
+
+        # Or use as standalone accessor generator
+        package Bar;
+        use Mojo::Base::XS;
+
+        has bar => 'bar';
+        has [qw/x y z/] => 42;
+        has bar_defaults => sub { Baz->new };
+
+DESCRIPTION
+
+    Mojo::Base::XS implements fast XS accessrors for Mojo based frameworks.
+
+    It can also be used as standalone Mojo-style accessors generator.
+
+SEE ALSO
+
+    * Class::XSAccessor
+    * Mojo::Base
+
+AUTHOR
+
+    Yaroslav Korshak <yko@cpan.org>
+
+LICENCE AND COPYRIGHT
+
+    Copyright (C) 2011, Yaroslav Korshak
+
+    This module is free software; you can redistribute it and/or modify it
+    under the same terms as Perl itself. See perlartistic.
