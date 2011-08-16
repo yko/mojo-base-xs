@@ -143,7 +143,6 @@ __entersub_optimized__()
 #define ACCESSOR_BODY                                                        \
     if (!SvROK(self))                                                        \
         XSRETURN_UNDEF;                                                      \
-                                                                             \
     HV *object = (HV*)SvRV(self);                                            \
     if (items > 1) {                                                         \
       SV* newvalue = newSVsv(ST(1));                                         \
@@ -180,7 +179,8 @@ __entersub_optimized__()
             PUSHMARK(SP);                                                    \
             XPUSHs(self);                                                    \
             PUTBACK;                                                         \
-            int number = call_sv(SvRV(readfrom.default_value), G_SCALAR);    \
+            int number =                                                     \
+                call_sv(SvRV(readfrom.default_value), G_SCALAR|G_EVAL|G_KEEPERR);      \
             SPAGAIN;                                                         \
             SP -= number;                                                    \
             ax = (SP - PL_stack_base) + 1;                                   \
