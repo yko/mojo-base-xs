@@ -163,36 +163,30 @@ __entersub_optimized__()
         XSRETURN(1);                                                         \
     }                                                                        \
                                                                              \
-    if (readfrom.default_value != NULL &&                                    \
-        !hv_common_key_len(                                                  \
-            object, readfrom.accessor_name, readfrom.accessor_len,           \
-            HV_FETCH_ISEXISTS, NULL, readfrom.hash))                         \
+    if (readfrom.default_value != NULL)                                      \
     {                                                                        \
         if (readfrom.default_coderef) {                                      \
             /* Coderef to generate defautl value */                          \
             SV *retval =  NULL;                                              \
           {                                                                  \
-            dSP;                                                             \
-            I32 ax;                                                          \
             ENTER;                                                           \
             SAVETMPS;                                                        \
             PUSHMARK(SP);                                                    \
             XPUSHs(self);                                                    \
             PUTBACK;                                                         \
             int number =                                                     \
-                call_sv(SvRV(readfrom.default_value), G_SCALAR|G_EVAL|G_KEEPERR);      \
+                call_sv(SvRV(readfrom.default_value),                        \
+                  G_SCALAR|G_EVAL|G_KEEPERR);                                \
             SPAGAIN;                                                         \
-            SP -= number;                                                    \
-            ax = (SP - PL_stack_base) + 1;                                   \
-            if (number > 0) {                                                \
-                retval = ST(0);                                              \
+            if (number == 1) {                                               \
+                retval = POPs;                                               \
             } else {                                                         \
                 XSRETURN_UNDEF;                                              \
             }                                                                \
             if (!hv_store(                                                   \
                 object, readfrom.accessor_name, readfrom.accessor_len,       \
-                retval, readfrom.hash)) {                                    \
-                croak("hv_store failed");                                    \
+                newSVsv(retval), readfrom.hash)) {                           \
+                warn("hv_store failed\n\n\n\n");                             \
                 XSRETURN_UNDEF;                                              \
             }                                                                \
             SvREFCNT_inc(retval);                                            \
@@ -200,14 +194,14 @@ __entersub_optimized__()
             FREETMPS;                                                        \
             LEAVE;                                                           \
           }                                                                  \
-          PUSHs(retval);                                                     \
+          PUSHs(sv_2mortal(newSVsv(retval)));                                \
           XSRETURN(1);                                                       \
         } else {                                                             \
             SV **retval = hv_store(                                          \
                 object, readfrom.accessor_name, readfrom.accessor_len,       \
-                readfrom.default_value, readfrom.hash);                      \
+                newSVsv(readfrom.default_value), readfrom.hash);             \
             SvREFCNT_inc(*retval);                                           \
-            PUSHs(*retval);                                                  \
+            PUSHs(sv_2mortal(*retval));                                      \
             XSRETURN(1);                                                     \
         }                                                                    \
     }                                                                        \
