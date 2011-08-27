@@ -4,3 +4,10 @@ include = Mojo::Base::XS
 [TestingAndDebugging::ProhibitNoStrict]
 allow = refs
 
+[-OTRS::RequireParensWithMethods]
+[-OTRS::RequireCamelCase]
+[-OTRS::ProhibitRequire]
+[-OTRS::RequireTrueReturnValueForModules]
+[-OTRS::ProhibitLowPrecendeceOps]
+[-OTRS::ProhibitOpen]
+
