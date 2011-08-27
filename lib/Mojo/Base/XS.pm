@@ -65,8 +65,8 @@ Mojo::Base::XS - very fast Mojo-styled accessors
 =head1 SYNOPSIS
 
     # Replace Mojo::Base
-    package Foo;
     use Mojo::Base::XS infect => 1;
+    package Foo;
     use Mojo::Base;
 
     has foo => 'bar';
@@ -84,7 +84,8 @@ Mojo::Base::XS - very fast Mojo-styled accessors
 
 =head1 DESCRIPTION
 
-Mojo::Base::XS implements fast accessrors for Mojo based frameworks.
+Mojo::Base::XS implements fast accessrors for Mojo-based software.
+Code based on L<Class::XSAccessor> - fastes Perl accessors.
 
 It can also be used as standalone Mojo-style accessors generator.
 
