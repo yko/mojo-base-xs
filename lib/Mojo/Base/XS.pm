@@ -93,6 +93,21 @@ Code based on L<Class::XSAccessor> - fastes Perl accessors.
 
 It can also be used as standalone Mojo-style accessors generator.
 
+=head1 EXPORTS
+
+L<Mojo::Base::XS> exports following functions:
+
+=head2 has
+
+    has 'name';
+    has [qw/name1 name2 name3/];
+    has name => 'foo';
+    has name => sub {...};
+    has [qw/name1 name2 name3/] => 'foo';
+    has [qw/name1 name2 name3/] => sub {...};
+
+Create attributes, just like the attr method.
+
 =head1 FUNCTIONS
 
 L<Mojo::Base::XS> implements following functions:
