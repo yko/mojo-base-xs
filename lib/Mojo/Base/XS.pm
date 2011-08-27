@@ -3,8 +3,8 @@ package Mojo::Base::XS;
 use strict;
 use warnings;
 
-use 5.008008;
-require feature if $] >= 5.010;
+use 5.010;
+require feature;
 
 our $VERSION = 0.04;
 require XSLoader;
