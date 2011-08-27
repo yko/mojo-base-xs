@@ -65,7 +65,7 @@ Mojo::Base::XS - very fast Mojo-styled accessors
 =head1 SYNOPSIS
 
     # Replace Mojo::Base
-    use Mojo::Base::XS infect => 1;
+    use Mojo::Base::XS -infect;
     package Foo;
     use Mojo::Base;
 
@@ -81,6 +81,10 @@ Mojo::Base::XS - very fast Mojo-styled accessors
     has [qw/x y z/] => 42;
     has bar_defaults => sub { Baz->new };
 
+L<Mojo::Base::XS> also allows you to run existing applications
+without any modifications:
+
+    perl -MMojo::Base::XS=-infect script/your_app
 
 =head1 DESCRIPTION
 

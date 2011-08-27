@@ -12,8 +12,8 @@ INSTALLATION
 SYNOPSIS
 
         # Replace Mojo::Base
+        use Mojo::Base::XS -infect;
         package Foo;
-        use Mojo::Base::XS infect => 1;
         use Mojo::Base;
 
         has foo => 'bar';
@@ -28,9 +28,15 @@ SYNOPSIS
         has [qw/x y z/] => 42;
         has bar_defaults => sub { Baz->new };
 
+    Mojo::Base::XS also allows you to run existing applications
+    without any modifications:
+
+        perl -MMojo::Base::XS=-infect script/your_app
+
 DESCRIPTION
 
-    Mojo::Base::XS implements fast XS accessrors for Mojo based frameworks.
+    Mojo::Base::XS implements fast accessrors for Mojo-based software.
+    Code based on Class::XSAccessor - fastes Perl accessors.
 
     It can also be used as standalone Mojo-style accessors generator.
 
