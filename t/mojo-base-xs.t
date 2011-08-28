@@ -3,7 +3,7 @@ use lib 't/lib';
 
 use Test::More tests => 9;
 
-use Mojo::Base::XS -infect;
+use Mojo::Base::XS;
 
 use BaseTestXS;
 

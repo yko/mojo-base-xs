@@ -3,12 +3,10 @@ package BaseTestXS;
 use strict;
 use warnings;
 
-use base 'BaseTest::Base2';
+use Mojo::Base::XS;
 
-# "When I first heard that Marge was joining the police academy,
-#  I thought it would be fun and zany, like that movie Spaceballs.
-#  But instead it was dark and disturbing.
-#  Like that movie... Police Academy."
+has [qw/ears eyes/] => sub {2};
+
 __PACKAGE__->attr(heads => 1);
 __PACKAGE__->attr('name' => sub { 'Named!' });
 __PACKAGE__->attr('def_array' => sub { ['Named!'] });

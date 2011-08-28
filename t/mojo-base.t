@@ -2,12 +2,21 @@
 use strict;
 use warnings;
 
-use Mojo::Base::XS -infect;
-use Test::More;
+BEGIN {
+    use Test::More;
 
-eval { require Mojo::Base };
-if ($@) {
-    plan skip_all => "Mojo::Base required to run this test";
+    eval {
+        require Mojo::Base::XS;
+        Mojo::Base::XS->import('-infect');
+    };
+    if ($@) {
+        if ($@ =~ m#Can't locate Mojo/Base\.pm#) {
+            plan skip_all => "Mojo::Base required to run this test";
+        }
+        else {
+            die "$@\n";
+        }
+    }
 }
 
 # Imported from Mojolicious v1.70
