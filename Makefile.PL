@@ -12,6 +12,7 @@ build_requires 'Test::More';
 
 resources
   license    => "http://dev.perl.org/licenses",
+  bugtracker => 'http://github.com/yko/mojo-base-xs/issues',
   repository => "http://github.com/yko/mojo-base-xs";
 
 auto_install;

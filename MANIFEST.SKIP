@@ -3,6 +3,9 @@
 .*\.old$
 .*\.swp$
 .*\.swo$
+.*\.bs
+.*\.c
+.*\.o
 ^Makefile$
 ^\.git
 MANIFEST.+
