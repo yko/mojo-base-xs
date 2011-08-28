@@ -1,5 +1,7 @@
 Revision history for Mojo-Base-XS
 
+0.05  Sun Aug 28 10:45:28 2011
+
 0.04  Sun Aug 28 09:46:20 2011
       Require perl 5.10
       Made tests more failsafe
