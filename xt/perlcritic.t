@@ -10,7 +10,7 @@ if ($@) {
 }
 
 # Use rc file if one exists
-my $rcfile = File::Spec->catfile('t', 'perlcriticrc');
+my $rcfile = File::Spec->catfile('xt', 'perlcriticrc');
 if (-f $rcfile) {
     Test::Perl::Critic->import(-profile => $rcfile);
 }

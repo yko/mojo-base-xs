@@ -8,7 +8,7 @@ license 'perl';
 perl_version '5.010';
 
 requires 'XSLoader';
-build_requires 'Test::More';
+test_requires 'Test::More';
 
 resources
   license    => "http://dev.perl.org/licenses",
@@ -16,5 +16,7 @@ resources
   repository => "http://github.com/yko/mojo-base-xs";
 
 auto_install;
+
+author_tests "xt";
 
 WriteAll;
