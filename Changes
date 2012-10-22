@@ -1,6 +1,10 @@
 Revision history for Mojo-Base-XS
 
-0.05  Sun Aug 28 10:45:28 2011
+0.06  Mon Oct 22 14:00:19 2012
+      Updated to Module::Install 1.06
+
+0.05  Thu Nov 10 19:10:42 2011
+      Fixed bug with ExtUtils::ParseXS > 3.04_02 and XSUBs export
 
 0.04  Sun Aug 28 09:46:20 2011
       Require perl 5.10
