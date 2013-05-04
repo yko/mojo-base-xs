@@ -161,7 +161,7 @@ __entersub_optimized__()
 
 #define ACCESSOR_BODY                                                        \
     if (!SvROK(self))                                                        \
-        XSRETURN_UNDEF;                                                      \
+        croak("Accessor '%s' should be called on an object, but called on the '%s' clasname", readfrom.accessor_name, SvPV_nolen(self));                                                             \
     HV *object = (HV*)SvRV(self);                                            \
     if (items > 1) {                                                         \
       SV* newvalue = newSVsv(ST(1));                                         \
