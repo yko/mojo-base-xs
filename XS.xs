@@ -161,7 +161,12 @@ __entersub_optimized__()
 
 #define ACCESSOR_BODY                                                        \
     if (!SvROK(self))                                                        \
-        croak("Accessor '%s' should be called on an object, but called on the '%s' clasname", readfrom.accessor_name, SvPV_nolen(self));                                                             \
+        croak(                                                               \
+            "Accessor '%s' should be called on an object, "                  \
+            "but called on the '%s' clasname",                               \
+            readfrom.accessor_name,                                          \
+            SvPV_nolen(self)                                                 \
+        );                                                                   \
     HV *object = (HV*)SvRV(self);                                            \
     if (items > 1) {                                                         \
       SV* newvalue = newSVsv(ST(1));                                         \
@@ -184,7 +189,7 @@ __entersub_optimized__()
                                                                              \
     if (readfrom.default_value != NULL)                                      \
     {                                                                        \
-        SV **retval;                                                 \
+        SV **retval;                                                         \
         if (readfrom.default_coderef) {                                      \
             /* Coderef to generate defautl value */                          \
           {                                                                  \
@@ -198,13 +203,13 @@ __entersub_optimized__()
                   G_SCALAR|G_EVAL|G_KEEPERR);                                \
             SPAGAIN;                                                         \
             if (number == 1) {                                               \
-                retval = &POPs;                                               \
+                retval = &POPs;                                              \
             } else {                                                         \
                 XSRETURN_UNDEF;                                              \
             }                                                                \
             retval = hv_store(                                               \
                     object, readfrom.accessor_name, readfrom.accessor_len,   \
-                    newSVsv(*retval), readfrom.hash);                         \
+                    newSVsv(*retval), readfrom.hash);                        \
             if (!retval) {                                                   \
                 warn("hv_store failed\n\n\n\n");                             \
                 XSRETURN_UNDEF;                                              \
