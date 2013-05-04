@@ -11,9 +11,6 @@ require XSLoader;
 
 XSLoader::load('Mojo::Base::XS', $VERSION);
 
-newxs_attr(__PACKAGE__ . '::attr');
-newxs_constructor(__PACKAGE__ . '::new');
-
 my $base_infected;
 
 sub import {
