@@ -91,8 +91,19 @@ STMT_START {                                                                 \
  **/
 #define INSTALL_NEW_CV_HASH_OBJ(package, xsub, name, default_value)          \
 STMT_START {                                                                 \
-  autoxs_hashkey hashkey;                                                    \
   const U32 key_len = strlen(name);                                          \
+  if (default_value != NULL && SvROK(default_value) &&                       \
+        SvTYPE(SvRV(default_value)) != SVt_PVCV)  {                          \
+        croak("Default has to be a code reference or constant value");       \
+  }                                                                          \
+  if (!isALPHA(name[0]) || !name[0] == '_') {                                \
+    croak("Attribute \"%s\" invalid", name);                                 \
+  }                                                                          \
+  int i;                                                                     \
+  for (i = 1; i < key_len; i++)                                              \
+    if (!isWORDCHAR(name[i]))                                                \
+        croak("Attribute \"%s\" invalid", name);                             \
+  autoxs_hashkey hashkey;                                                    \
   const U32 package_len = strlen(package);                                   \
   const U32 subname_len = key_len + package_len + 2;                         \
   hashkey.key = (char*)cxa_malloc((subname_len+1));                          \
