@@ -1,5 +1,9 @@
 Revision history for Mojo-Base-XS
 
+0.07  Sun May 05 01:30:01 2013
+      Added exceptions to match Mojo::Base behavior
+      Deny calls to accessors on a classname
+
 0.06  Mon Oct 22 14:19:28 2012
       Updated to Module::Install 1.06
       Separated author tests
