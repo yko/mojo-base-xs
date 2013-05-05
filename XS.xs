@@ -21,8 +21,6 @@
 #define CXA_ENABLE_ENTERSUB_OPTIMIZATION
 #endif
 
-//#ifdef CXA_ENABLE_ENTERSUB_OPTIMIZATION
-
 #define CXA_OPTIMIZATION_OK(op) ((op->op_spare & 1) != 1)
 #define CXA_DISABLE_OPTIMIZATION(op) (op->op_spare |= 1)
 
@@ -146,6 +144,9 @@ PROTOTYPES: DISABLE
 BOOT:
 #ifdef CXA_ENABLE_ENTERSUB_OPTIMIZATION
 CXA_DEFAULT_ENTERSUB = PL_ppaddr[OP_ENTERSUB];
+#endif
+#ifdef USE_ITHREADS
+_init_cxsa_lock(&CXSAccessor_lock);
 #endif
 
 void
