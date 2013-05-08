@@ -6,7 +6,7 @@ use warnings;
 use 5.010;
 require feature;
 
-our $VERSION = 0.07;
+our $VERSION = 0.08;
 require XSLoader;
 
 XSLoader::load('Mojo::Base::XS', $VERSION);
