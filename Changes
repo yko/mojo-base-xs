@@ -1,5 +1,8 @@
 Revision history for Mojo-Base-XS
 
+0.08  Wed May 08 22:58:42 2013
+      Rebased to Class-XSAccessor-1.16 C code
+
 0.07  Sun May 05 01:30:01 2013
       Added exceptions to match Mojo::Base behavior
       Deny calls to accessors on a classname

@@ -1,20 +1,35 @@
-#define NEED_sv_2pv_flags_GLOBAL
-#include "EXTERN.h"
-#include "perl.h"
-#include "XSUB.h"
-#include "cxsa_memory.h"
-#include "CXSAccessor.h"
+#ifdef win32 /* win32 doesn't get perl_core, so use the next best thing */
+#define perl_no_get_context
+#endif
 
-#include "ppport.h"
-
-#define CXAH(name) XS_Mojo__Base__XS_ ## name
-
-/* From Class-XSAccessor:
- * For versions of ExtUtils::ParseXS > 3.04_02, we need to
+/* For versions of ExtUtils::ParseXS > 3.04_02, we need to
  * explicitly enforce exporting of XSUBs since we want to
  * refer to them using XS(). This isn't strictly necessary,
  * but it's by far the simplest way to be backwards-compatible.
  */
+#define PERL_EUPXS_ALWAYS_EXPORT
+
+#include "EXTERN.h"
+#include "perl.h"
+
+/* want this eeaarly, before perl spits in the soup with XSUB.h */
+#include "cxsa_memory.h"
+
+#ifdef WIN32 /* thanks to Andy Grundman for pointing out problems with this on ActivePerl >= 5.10 */
+#include "XSUB.h"
+#else /* not WIN32 */
+#define PERL_CORE
+#include "XSUB.h"
+#undef PERL_CORE
+#endif
+
+#include "ppport.h"
+
+#include "cxsa_main.h"
+#include "cxsa_locking.h"
+
+#define CXAH(name) XS_Mojo__Base__XS_ ## name
+
 #define PERL_EUPXS_ALWAYS_EXPORT
 
 #if (PERL_BCDVERSION >= 0x5010000)
@@ -66,6 +81,17 @@ STMT_START {                                                                 \
 
 #endif
 */
+/* Install a new XSUB under 'name' and set the function index attribute
+ * Requires a previous declaration of a CV* cv!
+ **/
+#define INSTALL_NEW_CV_WITH_PTR(name, xsub, user_pointer)                   \
+STMT_START {                                                                \
+  cv = newXS(name, xsub, (char*)__FILE__);                                  \
+  if (cv == NULL)                                                           \
+    croak("ARG! Something went really wrong while installing a new XSUB!"); \
+  XSANY.any_ptr = (void *)user_pointer;                                     \
+} STMT_END
+
 
 #define INSTALL_NEW_CV(name, xsub)                                           \
 STMT_START {                                                                 \
@@ -101,34 +127,34 @@ STMT_START {                                                                 \
   for (i = 1; i < key_len; i++)                                              \
     if (!isWORDCHAR(name[i]))                                                \
         croak("Attribute \"%s\" invalid", name);                             \
-  autoxs_hashkey hashkey;                                                    \
+                                                                             \
   const U32 package_len = strlen(package);                                   \
   const U32 subname_len = key_len + package_len + 2;                         \
-  hashkey.key = (char*)cxa_malloc((subname_len+1));                          \
-  cxa_memcpy(hashkey.key, (void*)package, package_len);                      \
-  cxa_memcpy(&hashkey.key[package_len], "::", 2);                            \
-  cxa_memcpy(&hashkey.key[package_len+2], name, key_len );                   \
-  hashkey.key[subname_len] = 0;                                              \
-  hashkey.len = subname_len;                                                 \
-  const U32 function_index =                                                 \
-    get_hashkey_index(aTHX_ hashkey.key, hashkey.len);                       \
-  INSTALL_NEW_CV_WITH_INDEX(hashkey.key, xsub, function_index);              \
-  hashkey.default_value = default_value;                                     \
-  hashkey.accessor_name = (char*)cxa_malloc((key_len+1));                    \
-  hashkey.accessor_len = key_len;                                            \
-  cxa_memcpy(hashkey.accessor_name, name, key_len);                          \
-  hashkey.accessor_name[key_len] = 0;                                        \
-  PERL_HASH(hashkey.hash, hashkey.accessor_name, key_len);                   \
+  char * subname = (char*)cxa_malloc((subname_len+1));                       \
+  sprintf(subname, "%s::%s", package, name);                                 \
+  autoxs_hashkey *hk_ptr = get_hashkey(aTHX_ subname, subname_len);          \
+  hk_ptr->key = subname;                                                     \
+  hk_ptr->len = subname_len;                                                 \
+  INSTALL_NEW_CV_WITH_PTR(hk_ptr->key, xsub, hk_ptr);                        \
+  hk_ptr->default_value = default_value;                                     \
+  hk_ptr->accessor_name = (char*)cxa_malloc((key_len+1));                    \
+  hk_ptr->accessor_len = key_len;                                            \
+  cxa_memcpy(hk_ptr->accessor_name, name, key_len);                          \
+  hk_ptr->accessor_name[key_len] = 0;                                        \
+  PERL_HASH(hk_ptr->hash, hk_ptr->accessor_name, key_len);                   \
   if (default_value != NULL) {                                               \
       SvREFCNT_inc(default_value);                                           \
-      hashkey.default_coderef = SvROK(hashkey.default_value) &&              \
-        SvTYPE(SvRV(hashkey.default_value)) == SVt_PVCV;                     \
-  } else { hashkey.default_coderef = 0; }                                    \
-  CXSAccessor_hashkeys[function_index] = hashkey;                            \
+      hk_ptr->default_coderef = SvROK(hk_ptr->default_value) &&              \
+        SvTYPE(SvRV(hk_ptr->default_value)) == SVt_PVCV;                     \
+  } else { hk_ptr->default_coderef = 0; }                                    \
 } STMT_END
 
 
 static Perl_ppaddr_t CXA_DEFAULT_ENTERSUB = NULL;
+
+#ifdef USE_ITHREADS
+cxsa_global_lock CXSAccessor_lock;
+#endif
 
 XS(CXAH(accessor));
 XS(CXAH(accessor_init));
@@ -159,21 +185,23 @@ __entersub_optimized__()
         XSRETURN(0);
 #endif
 
+#define CXAH_GET_HASHKEY ((autoxs_hashkey *) XSANY.any_ptr)
+
 
 #define ACCESSOR_BODY                                                        \
-    if (!SvROK(self))                                                        \
+    if (!SvROK(self) || SvTYPE(SvRV(self)) != SVt_PVHV)                      \
         croak(                                                               \
             "Accessor '%s' should be called on an object, "                  \
             "but called on the '%s' clasname",                               \
-            readfrom.accessor_name,                                          \
+            readfrom->accessor_name,                                         \
             SvPV_nolen(self)                                                 \
         );                                                                   \
     HV *object = (HV*)SvRV(self);                                            \
     if (items > 1) {                                                         \
       SV* newvalue = newSVsv(ST(1));                                         \
       if (NULL == hv_common_key_len(                                         \
-        object, readfrom.accessor_name, readfrom.accessor_len,               \
-        HV_FETCH_ISSTORE, newvalue, readfrom.hash))                          \
+        object, readfrom->accessor_name, readfrom->accessor_len,             \
+        HV_FETCH_ISSTORE, newvalue, readfrom->hash))                         \
           croak("Failed to write new value to hash.");                       \
                                                                              \
       PUSHs(self);                                                           \
@@ -181,17 +209,17 @@ __entersub_optimized__()
     }                                                                        \
                                                                              \
     if ((svp = CXSA_HASH_FETCH(                                              \
-            object, readfrom.accessor_name, readfrom.accessor_len,           \
-            readfrom.hash)))                                                 \
+            object, readfrom->accessor_name, readfrom->accessor_len,         \
+            readfrom->hash)))                                                \
     {                                                                        \
         PUSHs(*svp);                                                         \
         XSRETURN(1);                                                         \
     }                                                                        \
                                                                              \
-    if (readfrom.default_value != NULL)                                      \
+    if (readfrom->default_value != NULL)                                     \
     {                                                                        \
         SV **retval;                                                         \
-        if (readfrom.default_coderef) {                                      \
+        if (readfrom->default_coderef) {                                     \
             /* Coderef to generate defautl value */                          \
           {                                                                  \
             ENTER;                                                           \
@@ -200,7 +228,7 @@ __entersub_optimized__()
             XPUSHs(self);                                                    \
             PUTBACK;                                                         \
             int number =                                                     \
-                call_sv(SvRV(readfrom.default_value),                        \
+                call_sv(SvRV(readfrom->default_value),                       \
                   G_SCALAR|G_EVAL|G_KEEPERR);                                \
             SPAGAIN;                                                         \
             if (number == 1) {                                               \
@@ -209,8 +237,8 @@ __entersub_optimized__()
                 XSRETURN_UNDEF;                                              \
             }                                                                \
             retval = hv_store(                                               \
-                    object, readfrom.accessor_name, readfrom.accessor_len,   \
-                    newSVsv(*retval), readfrom.hash);                        \
+                    object, readfrom->accessor_name, readfrom->accessor_len, \
+                    newSVsv(*retval), readfrom->hash);                       \
             if (!retval) {                                                   \
                 warn("hv_store failed\n\n\n\n");                             \
                 XSRETURN_UNDEF;                                              \
@@ -221,8 +249,8 @@ __entersub_optimized__()
           }                                                                  \
         } else {                                                             \
             retval = hv_store(                                               \
-                object, readfrom.accessor_name, readfrom.accessor_len,       \
-                newSVsv(readfrom.default_value), readfrom.hash);             \
+                object, readfrom->accessor_name, readfrom->accessor_len,     \
+                newSVsv(readfrom->default_value), readfrom->hash);           \
         }                                                                    \
         PUSHs(*retval);                                                      \
         XSRETURN(1);                                                         \
@@ -237,7 +265,7 @@ INIT:
     /* Get the const hash key struct from the global storage */
     /* ix is the magic integer variable that is set by the perl guts for us.
      * We uses it to identify the currently running alias of the accessor. Gollum! */
-    const autoxs_hashkey readfrom = CXSAccessor_hashkeys[ix];
+    const autoxs_hashkey * readfrom = CXAH_GET_HASHKEY;
     SV** svp;
 PPCODE:
     CXAH_OPTIMIZE_ENTERSUB(accessor);
@@ -251,7 +279,7 @@ INIT:
     /* Get the const hash key struct from the global storage */
     /* ix is the magic integer variable that is set by the perl guts for us.
     * We uses it to identify the currently running alias of the accessor. Gollum! */
-    const autoxs_hashkey readfrom = CXSAccessor_hashkeys[ix];
+    const autoxs_hashkey * readfrom = CXAH_GET_HASHKEY;
     SV** svp;
 PPCODE:
     ACCESSOR_BODY

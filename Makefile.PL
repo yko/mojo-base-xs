@@ -1,4 +1,5 @@
 use inc::Module::Install;
+use Module::Install::XSUtil;
 
 name 'Mojo-Base-XS';
 all_from 'lib/Mojo/Base/XS.pm';
@@ -9,6 +10,7 @@ perl_version '5.010';
 
 requires 'XSLoader';
 test_requires 'Test::More';
+cc_src_paths './';
 
 resources
   license    => "http://dev.perl.org/licenses",
