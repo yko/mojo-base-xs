@@ -56,7 +56,7 @@ __END__
 
 =head1 NAME
 
-Mojo::Base::XS - very fast Mojo-styled accessors
+Mojo::Base::XS - fast Mojo-styled accessors
 
 
 =head1 SYNOPSIS
@@ -103,7 +103,7 @@ L<Mojo::Base::XS> exports following functions:
     has [qw/name1 name2 name3/] => 'foo';
     has [qw/name1 name2 name3/] => sub {...};
 
-Create attributes, just like the attr method.
+Create attributes for hash-based objects, just like the attr method.
 
 =head1 FUNCTIONS
 
@@ -151,12 +151,14 @@ You can pass it either a hash or a hash reference with attribute values.
     __PACKAGE__->attr([qw/name1 name2 name3/] => 'foo');
     __PACKAGE__->attr([qw/name1 name2 name3/] => sub {...});
 
-Create attributes.
+Create attribute accessor for hash-based objects.
 An arrayref can be used to create more than one attribute.
 Pass an optional second argument to set a default value, it should be a
 constant or a sub reference.
 The sub reference will be excuted at accessor read time if there's no set
 value.
+Accessors can be chained, that means they return their invocant
+when they are called with an argument.
 
 =head1 SEE ALSO
 
