@@ -179,7 +179,7 @@ Yaroslav Korshak E<lt>yko@cpan.orgE<gt>
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright (C) 2011, Yaroslav Korshak
+Copyright (C) 2011-2013, Yaroslav Korshak
 
 This module is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself. See L<perlartistic>.
