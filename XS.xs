@@ -120,7 +120,7 @@ STMT_START {                                                                 \
         SvTYPE(SvRV(default_value)) != SVt_PVCV)  {                          \
         croak("Default has to be a code reference or constant value");       \
   }                                                                          \
-  if (!isALPHA(name[0]) || !name[0] == '_') {                                \
+  if (!isALPHA(name[0]) && !name[0] == '_') {                                \
     croak("Attribute \"%s\" invalid", name);                                 \
   }                                                                          \
   int i;                                                                     \
