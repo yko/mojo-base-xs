@@ -204,7 +204,7 @@ __entersub_optimized__()
         HV_FETCH_ISSTORE, newvalue, readfrom->hash))                         \
           croak("Failed to write new value to hash.");                       \
                                                                              \
-      PUSHs(self);                                                           \
+      PL_op->op_private & OPpLVAL_INTRO ? mPUSHs(newSVsv(self)) : PUSHs(self);   \
       XSRETURN(1);                                                           \
     }                                                                        \
                                                                              \
@@ -212,7 +212,7 @@ __entersub_optimized__()
             object, readfrom->accessor_name, readfrom->accessor_len,         \
             readfrom->hash)))                                                \
     {                                                                        \
-        PUSHs(*svp);                                                         \
+        PL_op->op_private & OPpLVAL_INTRO ? mPUSHs(newSVsv(*svp)) : PUSHs(*svp);   \
         XSRETURN(1);                                                         \
     }                                                                        \
                                                                              \
@@ -252,7 +252,7 @@ __entersub_optimized__()
                 object, readfrom->accessor_name, readfrom->accessor_len,     \
                 newSVsv(readfrom->default_value), readfrom->hash);           \
         }                                                                    \
-        PUSHs(*retval);                                                      \
+        PL_op->op_private & OPpLVAL_INTRO ? mPUSHs(newSVsv(*retval)) : PUSHs(*retval);   \
         XSRETURN(1);                                                         \
     }                                                                        \
     XSRETURN_UNDEF;                                                          \
