@@ -256,8 +256,7 @@ __entersub_optimized__()
                     object, readfrom->accessor_name, readfrom->accessor_len, \
                     newSVsv(*retval), readfrom->hash);                       \
             if (!retval) {                                                   \
-                warn("hv_store failed\n\n\n\n");                             \
-                XSRETURN_UNDEF;                                              \
+                croak("Mojo::Base::XS PANIC: hv_store failed");              \
             }                                                                \
             PUTBACK;                                                         \
             FREETMPS;                                                        \
