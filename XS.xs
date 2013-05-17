@@ -49,7 +49,7 @@
 #define XSA_PUSHs_TARG(s) STMT_START {                                       \
       if (PL_op->op_private & OPpLVAL_INTRO) {                               \
         dTARGET;                                                             \
-        sv_setsv(TARG, (s));                                                   \
+        sv_setsv(TARG, (s));                                                 \
         PUSHTARG;                                                            \
       } else {                                                               \
         PUSHs(s);                                                            \
@@ -99,12 +99,12 @@ STMT_START {                                                                 \
 /* Install a new XSUB under 'name' and set the function index attribute
  * Requires a previous declaration of a CV* cv!
  **/
-#define INSTALL_NEW_CV_WITH_PTR(name, xsub, user_pointer)                   \
-STMT_START {                                                                \
-  cv = newXS(name, xsub, (char*)__FILE__);                                  \
-  if (cv == NULL)                                                           \
-    croak("ARG! Something went really wrong while installing a new XSUB!"); \
-  XSANY.any_ptr = (void *)user_pointer;                                     \
+#define INSTALL_NEW_CV_WITH_PTR(name, xsub, user_pointer)                    \
+STMT_START {                                                                 \
+  cv = newXS(name, xsub, (char*)__FILE__);                                   \
+  if (cv == NULL)                                                            \
+    croak("ARG! Something went really wrong while installing a new XSUB!");  \
+  XSANY.any_ptr = (void *)user_pointer;                                      \
 } STMT_END
 
 
@@ -218,8 +218,10 @@ __entersub_optimized__()
         object, readfrom->accessor_name, readfrom->accessor_len,             \
         HV_FETCH_ISSTORE, newvalue, readfrom->hash))                         \
           croak("Failed to write new value to hash.");                       \
-                                                                             \
-      PL_op->op_private & OPpLVAL_INTRO ? mPUSHs(newSVsv(self)) : PUSHs(self);   \
+      /* TODO:  TARG-optimize this case as well */                           \
+      PL_op->op_private & OPpLVAL_INTRO                                      \
+        ? mPUSHs(newSVsv(self))                                              \
+        : PUSHs(self);                                                       \
       XSRETURN(1);                                                           \
     }                                                                        \
                                                                              \
