@@ -46,6 +46,21 @@
 #define CXSA_HASH_FETCH(hv, key, len, hash) hv_fetch((hv), (key), (len), 0)
 #endif
 
+#define XSA_PUSHs_TARG(s) STMT_START {                                       \
+      if (PL_op->op_private & OPpLVAL_INTRO) {                               \
+        dTARGET;                                                             \
+        sv_setsv(TARG, (s));                                                   \
+        PUSHTARG;                                                            \
+      } else {                                                               \
+        PUSHs(s);                                                            \
+      }                                                                      \
+} STMT_END
+
+#define XSA_RETURN_SV(s) STMT_START {                                        \
+      XSA_PUSHs_TARG(s);                                                     \
+      XSRETURN(1);                                                           \
+} STMT_END
+
 #define CXAH_GENERATE_ENTERSUB(name)                                         \
 OP * cxah_entersub_ ## name(pTHX) {                                          \
     dVAR; dSP; dTOPss;                                                       \
@@ -212,8 +227,7 @@ __entersub_optimized__()
             object, readfrom->accessor_name, readfrom->accessor_len,         \
             readfrom->hash)))                                                \
     {                                                                        \
-        PL_op->op_private & OPpLVAL_INTRO ? mPUSHs(newSVsv(*svp)) : PUSHs(*svp);   \
-        XSRETURN(1);                                                         \
+        XSA_RETURN_SV(*svp);                                                 \
     }                                                                        \
                                                                              \
     if (readfrom->default_value != NULL)                                     \
@@ -252,8 +266,7 @@ __entersub_optimized__()
                 object, readfrom->accessor_name, readfrom->accessor_len,     \
                 newSVsv(readfrom->default_value), readfrom->hash);           \
         }                                                                    \
-        PL_op->op_private & OPpLVAL_INTRO ? mPUSHs(newSVsv(*retval)) : PUSHs(*retval);   \
-        XSRETURN(1);                                                         \
+        XSA_RETURN_SV(*retval);                                              \
     }                                                                        \
     XSRETURN_UNDEF;                                                          \
 
