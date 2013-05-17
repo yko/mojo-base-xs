@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 use lib 't/lib';
 
-use Test::More tests => 9;
+use Test::More tests => 10;
 
 use Mojo::Base::XS;
 
@@ -26,3 +26,10 @@ is $self->name, "ololo";
 isa_ok $self->name("ololo"), 'BaseTestXS';
 
 is $self->ears, 2;
+
+eval {
+    BaseTestXS->attr("42fail");
+};
+
+like $@, qr/Attribute "42fail" invalid/,
+  "match Mojo::Base accessor name restrictions";

@@ -120,12 +120,12 @@ STMT_START {                                                                 \
         SvTYPE(SvRV(default_value)) != SVt_PVCV)  {                          \
         croak("Default has to be a code reference or constant value");       \
   }                                                                          \
-  if (!isALPHA(name[0]) && !name[0] == '_') {                                \
+  if (!isIDFIRST(name[0])) {                                                 \
     croak("Attribute \"%s\" invalid", name);                                 \
   }                                                                          \
   int i;                                                                     \
   for (i = 1; i < key_len; i++)                                              \
-    if (!isALNUM(name[i]))                                                \
+    if (!isALNUM(name[i]))                                                   \
         croak("Attribute \"%s\" invalid", name);                             \
                                                                              \
   const U32 package_len = strlen(package);                                   \
