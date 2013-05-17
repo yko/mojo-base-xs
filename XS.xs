@@ -125,7 +125,7 @@ STMT_START {                                                                 \
   }                                                                          \
   int i;                                                                     \
   for (i = 1; i < key_len; i++)                                              \
-    if (!isWORDCHAR(name[i]))                                                \
+    if (!isALNUM(name[i]))                                                \
         croak("Attribute \"%s\" invalid", name);                             \
                                                                              \
   const U32 package_len = strlen(package);                                   \
