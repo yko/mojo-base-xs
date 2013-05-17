@@ -1,5 +1,10 @@
 Revision history for Mojo-Base-XS
 
+0.09  Sat May 18 02:21:56 2013
+      Portad TARG-optimization from Class::XSAccessor
+      Fixed couple lvalue-related issues
+      Fixed #2 - broken perl < 5.14.0 compatibility
+
 0.08  Wed May 08 22:58:42 2013
       Rebased to Class-XSAccessor-1.16 C code
 
