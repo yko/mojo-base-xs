@@ -155,10 +155,52 @@ Create attribute accessor for hash-based objects.
 An arrayref can be used to create more than one attribute.
 Pass an optional second argument to set a default value, it should be a
 constant or a sub reference.
-The sub reference will be excuted at accessor read time if there's no set
+The sub reference will be executed at accessor read time if there's no set
 value.
 Accessors can be chained, that means they return their invocant
 when they are called with an argument.
+
+=head1 BUGS
+
+L<Mojo::Base::XS>'s goal is to exactly match the behaviour
+of all L<SUPPORTED VERSIONS OF Mojo::Base>.
+
+Any differences in behavior between L<Mojo::Base::XS> and L<Mojo::Base>
+should be considered as as a bug of L<Mojo::Base::XS>,
+if it's not documented in L<DEFFERENCES WITH Mojo::Base>.
+
+=head1 SUPPORTED VERSIONS OF Mojo::Base
+
+TBD
+
+=head1 DEFFERENCES WITH Mojo::Base
+
+L<Mojo::Base::XS> has the following differences with L<Mojo::Base>,
+which are intentional and should not be considered as bugs.
+
+=over
+
+=item * An accessor method call on a class name
+
+    perl -MMojo::Base=-base -E 'has "bar" => 42; say main->bar'
+
+=over
+
+=item L<Mojo::Base>
+
+Output:
+
+    42
+
+=item L<Mojo::Base::XS>
+
+Throws the following exception:
+
+    Accessor 'bar' should be called on an object, but called on the 'main' clasname
+
+=back
+
+=back
 
 =head1 SEE ALSO
 
@@ -166,8 +208,7 @@ when they are called with an argument.
 
 =item * L<Class::XSAccessor>
 
-L<Mojo::Base::XS> based on L<Class::XSAccessor> with some modifications
-that imlement L<Mojo::Base> behavior
+L<Mojo::Base::XS> based on L<Class::XSAccessor> with modifications.
 
 =item * L<Mojo::Base>
 
