@@ -259,7 +259,7 @@ __entersub_optimized__()
             PUTBACK;                                                         \
             int number =                                                     \
                 call_sv(SvRV(readfrom->default_value),                       \
-                  G_SCALAR|G_EVAL|G_KEEPERR);                                \
+                  G_SCALAR|G_KEEPERR);                                       \
             SPAGAIN;                                                         \
             if (number == 1) {                                               \
                 retval = &POPs;                                              \

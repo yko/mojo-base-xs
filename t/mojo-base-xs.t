@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 use lib 't/lib';
 
-use Test::More tests => 15;
+use Test::More tests => 17;
 
 use Mojo::Base::XS;
 
@@ -37,6 +37,10 @@ like $@, qr/Attribute "42shouldfail" invalid/,
 eval { $self->ears = 2 };
 my $lvalue_ok = like $@, qr/^Can't modify non-lvalue subroutine call/,
     "runtime error thrown for lvalue call";
+
+my $res = eval { $self->dies_in_default };
+like $@, qr/^Exception thrown/;
+is $res, undef;
 
 # Check for aliases
 

@@ -10,5 +10,6 @@ has [qw/ears eyes/] => sub {2};
 __PACKAGE__->attr(heads => 1);
 __PACKAGE__->attr('name' => sub { 'Named!' });
 __PACKAGE__->attr('def_array' => sub { ['Named!'] });
+__PACKAGE__->attr('dies_in_default' => sub { die "Exception thrown" });
 
 1;
