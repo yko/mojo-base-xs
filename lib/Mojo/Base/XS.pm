@@ -85,8 +85,8 @@ without any modifications:
 
 =head1 DESCRIPTION
 
-Mojo::Base::XS implements fast accessrors for Mojo-based software.
-Code based on L<Class::XSAccessor> - fastes Perl accessors.
+Mojo::Base::XS implements fast accessors for Mojo-based software.
+This library is based on the code of L<Class::XSAccessor>.
 
 It can also be used as standalone Mojo-style accessors generator.
 
@@ -103,7 +103,7 @@ L<Mojo::Base::XS> exports following functions:
     has [qw/name1 name2 name3/] => 'foo';
     has [qw/name1 name2 name3/] => sub {...};
 
-Create attributes for hash-based objects, just like the attr method.
+Create attributes for hash-based objects, just like the L<attr> method.
 
 =head1 FUNCTIONS
 
