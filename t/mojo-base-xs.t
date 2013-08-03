@@ -34,13 +34,9 @@ eval {
 like $@, qr/Attribute "42shouldfail" invalid/,
   "match Mojo::Base accessor name restrictions";
 
-TODO: {
-    diag "perl 5.16.0 .. 5.18.0 affected by bug #117947 - all XS functions are implicitly :lvalue";
-    local $TODO = 'find a workaround for bug #117947';
-    eval { $self->ears = 2 };
-    like $@, qr/^Can't modify non-lvalue subroutine call/,
-      "runtime error thrown";
-}
+eval { $self->ears = 2 };
+my $lvalue_ok = like $@, qr/^Can't modify non-lvalue subroutine call/,
+    "runtime error thrown for lvalue call";
 
 # Check for aliases
 

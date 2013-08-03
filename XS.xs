@@ -36,6 +36,20 @@
 #define CXA_ENABLE_ENTERSUB_OPTIMIZATION
 #endif
 
+#if (PERL_BCDVERSION >= 0x5016003) && (PERL_BCDVERSION <= 0x5018000)
+/* need to apply a workaround for perl bug #117947 on affected versions */
+#define FORCE_METHOD_NONLVALUE
+#define PUSHSUB_GET_LVALUE_MASK(func)                                   \
+        /* If the context is indeterminate, then only the lvalue */     \
+        /* flags that the caller also has are applicable.        */     \
+        (                                                               \
+           (PL_op->op_flags & OPf_WANT)                                 \
+               ? OPpENTERSUB_LVAL_MASK                                  \
+               : !(PL_op->op_private & OPpENTERSUB_LVAL_MASK)           \
+                   ? 0 : (U8)func(aTHX)                                 \
+        )
+#endif
+
 #define CXA_OPTIMIZATION_OK(op) ((op->op_spare & 1) != 1)
 #define CXA_DISABLE_OPTIMIZATION(op) (op->op_spare |= 1)
 
@@ -282,6 +296,13 @@ INIT:
     const autoxs_hashkey * readfrom = CXAH_GET_HASHKEY;
     SV** svp;
 PPCODE:
+#ifdef FORCE_METHOD_NONLVALUE
+    if (((PL_op->op_private
+                    & PUSHSUB_GET_LVALUE_MASK(Perl_is_lvalue_sub)
+         ) & OPpENTERSUB_LVAL_MASK) == OPpLVAL_INTRO &&
+            !CvLVALUE(cv))
+    DIE(aTHX_ "Can't modify non-lvalue subroutine call");
+#endif
     CXAH_OPTIMIZE_ENTERSUB(accessor);
     ACCESSOR_BODY
 
