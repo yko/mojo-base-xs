@@ -36,7 +36,7 @@
 #define CXA_ENABLE_ENTERSUB_OPTIMIZATION
 #endif
 
-#if (PERL_BCDVERSION >= 0x5016003) && (PERL_BCDVERSION <= 0x5018000)
+#if (PERL_BCDVERSION >= 0x5016000) && (PERL_BCDVERSION <= 0x5018000)
 /* need to apply a workaround for perl bug #117947 on affected versions */
 #define FORCE_METHOD_NONLVALUE
 #define PUSHSUB_GET_LVALUE_MASK(func)                                   \
