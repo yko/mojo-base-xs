@@ -181,10 +181,6 @@ STMT_START {                                                                 \
 
 static Perl_ppaddr_t CXA_DEFAULT_ENTERSUB = NULL;
 
-#ifdef USE_ITHREADS
-cxsa_global_lock CXSAccessor_lock;
-#endif
-
 XS(CXAH(accessor));
 XS(CXAH(accessor_init));
 CXAH_GENERATE_ENTERSUB(accessor);
