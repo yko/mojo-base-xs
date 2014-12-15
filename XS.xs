@@ -63,7 +63,7 @@
 #define XSA_PUSHs_TARG(s) STMT_START {                                       \
       if (PL_op->op_private & OPpLVAL_INTRO) {                               \
         dTARGET;                                                             \
-        sv_setsv(TARG, (s));                                                 \
+        TARG = sv_2mortal(newSVsv(s));                                       \
         PUSHTARG;                                                            \
       } else {                                                               \
         PUSHs(s);                                                            \
