@@ -80,7 +80,7 @@ OP * cxah_entersub_ ## name(pTHX) {                                          \
     dVAR; dSP; dTOPss;                                                       \
     if (sv                                                                   \
         && (SvTYPE(sv) == SVt_PVCV)                                          \
-        && (CvXSUB((CV *)sv) == CXAH(name ## _init))                         \
+        && (CvXSUB((CV *)sv) == CXAH(name))                                  \
     ) {                                                                      \
         (void)POPs;                                                          \
         PUTBACK;                                                             \
@@ -93,15 +93,11 @@ OP * cxah_entersub_ ## name(pTHX) {                                          \
     }                                                                        \
 }
 
-#define CXAH_OPTIMIZE_ENTERSUB(name)                                         \
-STMT_START {                                                                 \
-    if (CXA_OPTIMIZATION_OK(PL_op)) {                                        \
-        if (PL_op->op_ppaddr == CXA_DEFAULT_ENTERSUB) {                      \
-            PL_op->op_ppaddr = cxah_entersub_ ## name;                       \
-        } else {                                                             \
-            CXA_DISABLE_OPTIMIZATION(PL_op);                                 \
-        }                                                                    \
-    }                                                                        \
+#define CXAH_OPTIMIZE_ENTERSUB(name)                                                \
+STMT_START {                                                                        \
+    if ((PL_op->op_ppaddr == CXA_DEFAULT_ENTERSUB) && CXA_OPTIMIZATION_OK(PL_op)) { \
+        PL_op->op_ppaddr = cxah_entersub_ ## name;                                  \
+    }                                                                               \
 } STMT_END
 /*
 #else
@@ -182,11 +178,9 @@ STMT_START {                                                                 \
 static Perl_ppaddr_t CXA_DEFAULT_ENTERSUB = NULL;
 
 XS(CXAH(accessor));
-XS(CXAH(accessor_init));
 CXAH_GENERATE_ENTERSUB(accessor);
 
 XS(CXAH(constructor));
-XS(CXAH(constructor_init));
 CXAH_GENERATE_ENTERSUB(constructor);
 
 MODULE = Mojo::Base::XS    PACKAGE = Mojo::Base::XS
@@ -205,9 +199,9 @@ __entersub_optimized__()
     PROTOTYPE:
     CODE:
 #ifdef CXA_ENABLE_ENTERSUB_OPTIMIZATION
-        XSRETURN(1);
+        XSRETURN_YES;
 #else
-        XSRETURN(0);
+        XSRETURN_NO;
 #endif
 
 #define CXAH_GET_HASHKEY ((autoxs_hashkey *) XSANY.any_ptr)
@@ -282,27 +276,6 @@ __entersub_optimized__()
     XSRETURN_UNDEF;                                                          \
 
 void
-accessor_init(self, ...)
-    SV *self;
-ALIAS:
-INIT:
-    /* Get the const hash key struct from the global storage */
-    /* ix is the magic integer variable that is set by the perl guts for us.
-     * We uses it to identify the currently running alias of the accessor. Gollum! */
-    const autoxs_hashkey * readfrom = CXAH_GET_HASHKEY;
-    SV** svp;
-PPCODE:
-#ifdef FORCE_METHOD_NONLVALUE
-    if (((PL_op->op_private
-                    & PUSHSUB_GET_LVALUE_MASK(Perl_is_lvalue_sub)
-         ) & OPpENTERSUB_LVAL_MASK) == OPpLVAL_INTRO &&
-            !CvLVALUE(cv))
-    DIE(aTHX_ "Can't modify non-lvalue subroutine call");
-#endif
-    CXAH_OPTIMIZE_ENTERSUB(accessor);
-    ACCESSOR_BODY
-
-void
 accessor(self, ...)
     SV* self;
 ALIAS:
@@ -313,6 +286,7 @@ INIT:
     const autoxs_hashkey * readfrom = CXAH_GET_HASHKEY;
     SV** svp;
 PPCODE:
+    CXAH_OPTIMIZE_ENTERSUB(accessor);
     ACCESSOR_BODY
 
 
@@ -338,13 +312,13 @@ CODE:
             CV* cv;
             SV **elem = av_fetch((AV*)SvRV(name), i, 0);
             INSTALL_NEW_CV_HASH_OBJ(
-                caller, CXAH(accessor_init),
+                caller, CXAH(accessor),
                 SvPV_nolen(*elem), default_value);
         }
     } else {
         CV* cv;
         INSTALL_NEW_CV_HASH_OBJ(
-            caller, CXAH(accessor_init), SvPV_nolen(name), default_value);
+            caller, CXAH(accessor), SvPV_nolen(name), default_value);
     }
     PUSHs(caller_obj);
 
@@ -382,7 +356,7 @@ CODE:
     PUSHs(sv_2mortal(obj));                                                      \
 
 void
-constructor_init(class, ...)
+constructor(class, ...)
     SV* class;
   PREINIT:
     int iStack;
@@ -393,23 +367,11 @@ constructor_init(class, ...)
     CXAH_OPTIMIZE_ENTERSUB(constructor);
     CONSTRUCTOR_BODY
 
-
-void
-constructor(class, ...)
-    SV* class;
-  PREINIT:
-    int iStack;
-    HV* hash;
-    SV* obj;
-    const char* classname;
-  PPCODE:
-    CONSTRUCTOR_BODY
-
 void
 newxs_constructor(name)
   char* name;
   PPCODE:
-    INSTALL_NEW_CV(name, CXAH(constructor_init));
+    INSTALL_NEW_CV(name, CXAH(constructor));
 
 void
 newxs_attr(name)
