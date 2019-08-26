@@ -30,8 +30,6 @@
 
 #define CXAH(name) XS_Mojo__Base__XS_ ## name
 
-#define PERL_EUPXS_ALWAYS_EXPORT
-
 #if (PERL_BCDVERSION >= 0x5010000)
 #define CXA_ENABLE_ENTERSUB_OPTIMIZATION
 #endif
@@ -99,13 +97,7 @@ STMT_START {                                                                    
         PL_op->op_ppaddr = cxah_entersub_ ## name;                                  \
     }                                                                               \
 } STMT_END
-/*
-#else
 
-#define CXAH_GENERATE_ENTERSUB(name)
-
-#endif
-*/
 /* Install a new XSUB under 'name' and set the function index attribute
  * Requires a previous declaration of a CV* cv!
  **/
@@ -122,17 +114,6 @@ STMT_START {                                                                 \
 STMT_START {                                                                 \
   if (newXS(name, xsub, (char*)__FILE__) == NULL)                            \
     croak("ARG! Something went really wrong while installing a new XSUB!");  \
-} STMT_END
-
-/* Install a new XSUB under 'name' and set the function index attribute
- * Requires a previous declaration of a CV* cv!
- **/
-#define INSTALL_NEW_CV_WITH_INDEX(subname, xsub, function_index)             \
-STMT_START {                                                                 \
-  cv = newXS(subname, xsub, (const char*)__FILE__);                          \
-  if (cv == NULL)                                                            \
-    croak("ARG! Something went really wrong while installing a new XSUB!");  \
-  XSANY.any_i32 = function_index;                                            \
 } STMT_END
 
 /* Install a new XSUB under 'name' and set the function index attribute
@@ -196,7 +177,6 @@ _init_cxsa_lock(&CXSAccessor_lock);
 
 void
 __entersub_optimized__()
-    PROTOTYPE:
     CODE:
 #ifdef CXA_ENABLE_ENTERSUB_OPTIMIZATION
         XSRETURN_YES;
@@ -281,8 +261,6 @@ accessor(self, ...)
 ALIAS:
 INIT:
     /* Get the const hash key struct from the global storage */
-    /* ix is the magic integer variable that is set by the perl guts for us.
-    * We uses it to identify the currently running alias of the accessor. Gollum! */
     const autoxs_hashkey * readfrom = CXAH_GET_HASHKEY;
     SV** svp;
 PPCODE:
@@ -295,7 +273,6 @@ attr(caller_obj, name, ...)
     SV *caller_obj;
     SV *name;
 PREINIT:
-    char *cstname = SvPV_nolen(PL_curstname);
     SV *default_value = items > 2 ? ST(2) : NULL;
     const char *caller = SvROK(caller_obj) ?
         sv_reftype(SvRV(caller_obj), TRUE) :
