@@ -1,3 +1,5 @@
+# [![Build Status](https://travis-ci.org/yko/mojo-base-xs.svg?branch=master)](https://travis-ci.org/yko/mojo-base-xs)
+
 NAME
 
     Mojo::Base::XS - very fast Mojo-styled accessors
