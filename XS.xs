@@ -37,14 +37,14 @@
 #if (PERL_BCDVERSION >= 0x5016000) && (PERL_BCDVERSION <= 0x5018000)
 /* need to apply a workaround for perl bug #117947 on affected versions */
 #define FORCE_METHOD_NONLVALUE
-#define PUSHSUB_GET_LVALUE_MASK(func)                                   \
-        /* If the context is indeterminate, then only the lvalue */     \
-        /* flags that the caller also has are applicable.        */     \
-        (                                                               \
-           (PL_op->op_flags & OPf_WANT)                                 \
-               ? OPpENTERSUB_LVAL_MASK                                  \
-               : !(PL_op->op_private & OPpENTERSUB_LVAL_MASK)           \
-                   ? 0 : (U8)func(aTHX)                                 \
+#define PUSHSUB_GET_LVALUE_MASK(func)                                                        \
+        /* If the context is indeterminate, then only the lvalue */                          \
+        /* flags that the caller also has are applicable.        */                          \
+        (                                                                                    \
+           (PL_op->op_flags & OPf_WANT)                                                      \
+               ? OPpENTERSUB_LVAL_MASK                                                       \
+               : !(PL_op->op_private & OPpENTERSUB_LVAL_MASK)                                \
+                   ? 0 : (U8)func(aTHX)                                                      \
         )
 #endif
 
@@ -52,107 +52,107 @@
 #define CXA_DISABLE_OPTIMIZATION(op) (op->op_spare |= 1)
 
 #ifdef hv_common_key_len
-#define CXSA_HASH_FETCH(hv, key, len, hash)                                  \
+#define CXSA_HASH_FETCH(hv, key, len, hash)                                                  \
     hv_common_key_len((hv), (key), (len), HV_FETCH_JUST_SV, NULL, (hash))
 #else
 #define CXSA_HASH_FETCH(hv, key, len, hash) hv_fetch((hv), (key), (len), 0)
 #endif
 
-#define XSA_PUSHs_TARG(s) STMT_START {                                       \
-      if (PL_op->op_private & OPpLVAL_INTRO) {                               \
-        dTARGET;                                                             \
-        TARG = sv_2mortal(newSVsv(s));                                       \
-        PUSHTARG;                                                            \
-      } else {                                                               \
-        PUSHs(s);                                                            \
-      }                                                                      \
+#define XSA_PUSHs_TARG(s) STMT_START {                                                       \
+      if (PL_op->op_private & OPpLVAL_INTRO) {                                               \
+        dTARGET;                                                                             \
+        TARG = sv_2mortal(newSVsv(s));                                                       \
+        PUSHTARG;                                                                            \
+      } else {                                                                               \
+        PUSHs(s);                                                                            \
+      }                                                                                      \
 } STMT_END
 
-#define XSA_RETURN_SV(s) STMT_START {                                        \
-      XSA_PUSHs_TARG(s);                                                     \
-      XSRETURN(1);                                                           \
+#define XSA_RETURN_SV(s) STMT_START {                                                        \
+      XSA_PUSHs_TARG(s);                                                                     \
+      XSRETURN(1);                                                                           \
 } STMT_END
 
-#define CXAH_GENERATE_ENTERSUB(name)                                         \
-OP * cxah_entersub_ ## name(pTHX) {                                          \
-    dVAR; dSP; dTOPss;                                                       \
-    if (sv                                                                   \
-        && (SvTYPE(sv) == SVt_PVCV)                                          \
-        && (CvXSUB((CV *)sv) == CXAH(name))                                  \
-    ) {                                                                      \
-        (void)POPs;                                                          \
-        PUTBACK;                                                             \
-        (void)CXAH(name)(aTHX_ (CV *)sv);                                    \
-        return NORMAL;                                                       \
-    } else { /* not static: disable optimization */                          \
-        CXA_DISABLE_OPTIMIZATION(PL_op); /* make sure it's not reinstated */ \
-        PL_op->op_ppaddr = CXA_DEFAULT_ENTERSUB;                             \
-        return CXA_DEFAULT_ENTERSUB(aTHX);                                   \
-    }                                                                        \
+#define CXAH_GENERATE_ENTERSUB(name)                                                         \
+OP * cxah_entersub_ ## name(pTHX) {                                                          \
+    dVAR; dSP; dTOPss;                                                                       \
+    if (sv                                                                                   \
+        && (SvTYPE(sv) == SVt_PVCV)                                                          \
+        && (CvXSUB((CV *)sv) == CXAH(name))                                                  \
+    ) {                                                                                      \
+        (void)POPs;                                                                          \
+        PUTBACK;                                                                             \
+        (void)CXAH(name)(aTHX_ (CV *)sv);                                                    \
+        return NORMAL;                                                                       \
+    } else { /* not static: disable optimization */                                          \
+        CXA_DISABLE_OPTIMIZATION(PL_op); /* make sure it's not reinstated */                 \
+        PL_op->op_ppaddr = CXA_DEFAULT_ENTERSUB;                                             \
+        return CXA_DEFAULT_ENTERSUB(aTHX);                                                   \
+    }                                                                                        \
 }
 
-#define CXAH_OPTIMIZE_ENTERSUB(name)                                                \
-STMT_START {                                                                        \
-    if ((PL_op->op_ppaddr == CXA_DEFAULT_ENTERSUB) && CXA_OPTIMIZATION_OK(PL_op)) { \
-        PL_op->op_ppaddr = cxah_entersub_ ## name;                                  \
-    }                                                                               \
+#define CXAH_OPTIMIZE_ENTERSUB(name)                                                         \
+STMT_START {                                                                                 \
+    if ((PL_op->op_ppaddr == CXA_DEFAULT_ENTERSUB) && CXA_OPTIMIZATION_OK(PL_op)) {          \
+        PL_op->op_ppaddr = cxah_entersub_ ## name;                                           \
+    }                                                                                        \
 } STMT_END
 
 /* Install a new XSUB under 'name' and set the function index attribute
  * Requires a previous declaration of a CV* cv!
  **/
-#define INSTALL_NEW_CV_WITH_PTR(name, xsub, user_pointer)                    \
-STMT_START {                                                                 \
-  cv = newXS(name, xsub, (char*)__FILE__);                                   \
-  if (cv == NULL)                                                            \
-    croak("ARG! Something went really wrong while installing a new XSUB!");  \
-  XSANY.any_ptr = (void *)user_pointer;                                      \
+#define INSTALL_NEW_CV_WITH_PTR(name, xsub, user_pointer)                                    \
+STMT_START {                                                                                 \
+  cv = newXS(name, xsub, (char*)__FILE__);                                                   \
+  if (cv == NULL)                                                                            \
+    croak("ARG! Something went really wrong while installing a new XSUB!");                  \
+  XSANY.any_ptr = (void *)user_pointer;                                                      \
 } STMT_END
 
 
-#define INSTALL_NEW_CV(name, xsub)                                           \
-STMT_START {                                                                 \
-  if (newXS(name, xsub, (char*)__FILE__) == NULL)                            \
-    croak("ARG! Something went really wrong while installing a new XSUB!");  \
+#define INSTALL_NEW_CV(name, xsub)                                                           \
+STMT_START {                                                                                 \
+  if (newXS(name, xsub, (char*)__FILE__) == NULL)                                            \
+    croak("ARG! Something went really wrong while installing a new XSUB!");                  \
 } STMT_END
 
 /* Install a new XSUB under 'name' and set the function index attribute
  * for hash-based objects. Requires a previous declaration of a CV* cv!
  **/
-#define INSTALL_NEW_CV_HASH_OBJ(package, xsub, name, default_value)          \
-STMT_START {                                                                 \
-  const U32 key_len = strlen(name);                                          \
-  if (default_value != NULL && SvROK(default_value) &&                       \
-        SvTYPE(SvRV(default_value)) != SVt_PVCV)  {                          \
-        croak("Default has to be a code reference or constant value");       \
-  }                                                                          \
-  if (!isIDFIRST(name[0])) {                                                 \
-    croak("Attribute \"%s\" invalid", name);                                 \
-  }                                                                          \
-  int i;                                                                     \
-  for (i = 1; i < key_len; i++)                                              \
-    if (!isALNUM(name[i]))                                                   \
-        croak("Attribute \"%s\" invalid", name);                             \
-                                                                             \
-  const U32 package_len = strlen(package);                                   \
-  const U32 subname_len = key_len + package_len + 2;                         \
-  char * subname = (char*)cxa_malloc((subname_len+1));                       \
-  sprintf(subname, "%s::%s", package, name);                                 \
-  autoxs_hashkey *hk_ptr = get_hashkey(aTHX_ subname, subname_len);          \
-  hk_ptr->key = subname;                                                     \
-  hk_ptr->len = subname_len;                                                 \
-  INSTALL_NEW_CV_WITH_PTR(hk_ptr->key, xsub, hk_ptr);                        \
-  hk_ptr->default_value = default_value;                                     \
-  hk_ptr->accessor_name = (char*)cxa_malloc((key_len+1));                    \
-  hk_ptr->accessor_len = key_len;                                            \
-  cxa_memcpy(hk_ptr->accessor_name, name, key_len);                          \
-  hk_ptr->accessor_name[key_len] = 0;                                        \
-  PERL_HASH(hk_ptr->hash, hk_ptr->accessor_name, key_len);                   \
-  if (default_value != NULL) {                                               \
-      SvREFCNT_inc(default_value);                                           \
-      hk_ptr->default_coderef = SvROK(hk_ptr->default_value) &&              \
-        SvTYPE(SvRV(hk_ptr->default_value)) == SVt_PVCV;                     \
-  } else { hk_ptr->default_coderef = 0; }                                    \
+#define INSTALL_NEW_CV_HASH_OBJ(package, xsub, name, default_value)                          \
+STMT_START {                                                                                 \
+  const U32 key_len = strlen(name);                                                          \
+  if (default_value != NULL && SvROK(default_value) &&                                       \
+        SvTYPE(SvRV(default_value)) != SVt_PVCV)  {                                          \
+        croak("Default has to be a code reference or constant value");                       \
+  }                                                                                          \
+  if (!isIDFIRST(name[0])) {                                                                 \
+    croak("Attribute \"%s\" invalid", name);                                                 \
+  }                                                                                          \
+  int i;                                                                                     \
+  for (i = 1; i < key_len; i++)                                                              \
+    if (!isALNUM(name[i]))                                                                   \
+        croak("Attribute \"%s\" invalid", name);                                             \
+                                                                                             \
+  const U32 package_len = strlen(package);                                                   \
+  const U32 subname_len = key_len + package_len + 2;                                         \
+  char * subname = (char*)cxa_malloc((subname_len+1));                                       \
+  sprintf(subname, "%s::%s", package, name);                                                 \
+  autoxs_hashkey *hk_ptr = get_hashkey(aTHX_ subname, subname_len);                          \
+  hk_ptr->key = subname;                                                                     \
+  hk_ptr->len = subname_len;                                                                 \
+  INSTALL_NEW_CV_WITH_PTR(hk_ptr->key, xsub, hk_ptr);                                        \
+  hk_ptr->default_value = default_value;                                                     \
+  hk_ptr->accessor_name = (char*)cxa_malloc((key_len+1));                                    \
+  hk_ptr->accessor_len = key_len;                                                            \
+  cxa_memcpy(hk_ptr->accessor_name, name, key_len);                                          \
+  hk_ptr->accessor_name[key_len] = 0;                                                        \
+  PERL_HASH(hk_ptr->hash, hk_ptr->accessor_name, key_len);                                   \
+  if (default_value != NULL) {                                                               \
+      SvREFCNT_inc(default_value);                                                           \
+      hk_ptr->default_coderef = SvROK(hk_ptr->default_value) &&                              \
+        SvTYPE(SvRV(hk_ptr->default_value)) == SVt_PVCV;                                     \
+  } else { hk_ptr->default_coderef = 0; }                                                    \
 } STMT_END
 
 
@@ -177,7 +177,7 @@ _init_cxsa_lock(&CXSAccessor_lock);
 
 void
 __entersub_optimized__()
-    CODE:
+CODE:
 #ifdef CXA_ENABLE_ENTERSUB_OPTIMIZATION
         XSRETURN_YES;
 #else
@@ -293,12 +293,12 @@ CODE:
 void
 constructor(class, ...)
     SV* class;
-  PREINIT:
+PREINIT:
     int iStack;
     HV* hash;
     SV* obj;
     const char* classname;
-  PPCODE:
+PPCODE:
     CXAH_OPTIMIZE_ENTERSUB(constructor);
 
     classname = SvROK(class)       ?
@@ -336,12 +336,12 @@ constructor(class, ...)
 
 void
 newxs_constructor(name)
-  char* name;
-  PPCODE:
+    char* name;
+PPCODE:
     INSTALL_NEW_CV(name, CXAH(constructor));
 
 void
 newxs_attr(name)
-  char* name;
-  PPCODE:
+    char* name;
+PPCODE:
     INSTALL_NEW_CV(name, CXAH(attr));
