@@ -187,74 +187,6 @@ __entersub_optimized__()
 #define CXAH_GET_HASHKEY ((autoxs_hashkey *) XSANY.any_ptr)
 
 
-#define ACCESSOR_BODY                                                        \
-    if (!SvROK(self) || SvTYPE(SvRV(self)) != SVt_PVHV)                      \
-        croak(                                                               \
-            "Accessor '%s' should be called on an object, "                  \
-            "but called on the '%s' clasname",                               \
-            readfrom->accessor_name,                                         \
-            SvPV_nolen(self)                                                 \
-        );                                                                   \
-    HV *object = (HV*)SvRV(self);                                            \
-    if (items > 1) {                                                         \
-      SV* newvalue = newSVsv(ST(1));                                         \
-      if (NULL == hv_common_key_len(                                         \
-        object, readfrom->accessor_name, readfrom->accessor_len,             \
-        HV_FETCH_ISSTORE, newvalue, readfrom->hash))                         \
-          croak("Failed to write new value to hash.");                       \
-      /* TODO:  TARG-optimize this case as well */                           \
-      PL_op->op_private & OPpLVAL_INTRO                                      \
-        ? mPUSHs(newSVsv(self))                                              \
-        : PUSHs(self);                                                       \
-      XSRETURN(1);                                                           \
-    }                                                                        \
-                                                                             \
-    if ((svp = CXSA_HASH_FETCH(                                              \
-            object, readfrom->accessor_name, readfrom->accessor_len,         \
-            readfrom->hash)))                                                \
-    {                                                                        \
-        XSA_RETURN_SV(*svp);                                                 \
-    }                                                                        \
-                                                                             \
-    if (readfrom->default_value != NULL)                                     \
-    {                                                                        \
-        SV **retval;                                                         \
-        if (readfrom->default_coderef) {                                     \
-            /* Coderef to generate defautl value */                          \
-          {                                                                  \
-            ENTER;                                                           \
-            SAVETMPS;                                                        \
-            PUSHMARK(SP);                                                    \
-            XPUSHs(self);                                                    \
-            PUTBACK;                                                         \
-            int number =                                                     \
-                call_sv(SvRV(readfrom->default_value),                       \
-                  G_SCALAR|G_KEEPERR);                                       \
-            SPAGAIN;                                                         \
-            if (number == 1) {                                               \
-                retval = &POPs;                                              \
-            } else {                                                         \
-                XSRETURN_UNDEF;                                              \
-            }                                                                \
-            retval = hv_store(                                               \
-                    object, readfrom->accessor_name, readfrom->accessor_len, \
-                    newSVsv(*retval), readfrom->hash);                       \
-            if (!retval) {                                                   \
-                croak("Mojo::Base::XS PANIC: hv_store failed");              \
-            }                                                                \
-            PUTBACK;                                                         \
-            FREETMPS;                                                        \
-            LEAVE;                                                           \
-          }                                                                  \
-        } else {                                                             \
-            retval = hv_store(                                               \
-                object, readfrom->accessor_name, readfrom->accessor_len,     \
-                newSVsv(readfrom->default_value), readfrom->hash);           \
-        }                                                                    \
-        XSA_RETURN_SV(*retval);                                              \
-    }                                                                        \
-    XSRETURN_UNDEF;                                                          \
-
 void
 accessor(self, ...)
     SV* self;
@@ -265,7 +197,65 @@ INIT:
     SV** svp;
 PPCODE:
     CXAH_OPTIMIZE_ENTERSUB(accessor);
-    ACCESSOR_BODY
+    if (!SvROK(self) || SvTYPE(SvRV(self)) != SVt_PVHV)
+        croak(
+            "Accessor '%s' should be called on an object, "
+            "but called on the '%s' clasname",
+            readfrom->accessor_name,
+            SvPV_nolen(self)
+        );
+    HV *object = (HV*)SvRV(self);
+    if (items > 1) {
+      SV* newvalue = newSVsv(ST(1));
+
+
+      if (NULL == hv_common_key_len(
+        object, readfrom->accessor_name, readfrom->accessor_len,
+        HV_FETCH_ISSTORE, newvalue, readfrom->hash))
+          croak("Failed to write new value to hash.");
+        XSA_RETURN_SV(self);
+    }
+
+    if ((svp = CXSA_HASH_FETCH(
+            object, readfrom->accessor_name, readfrom->accessor_len,
+            readfrom->hash)))
+    {
+        XSA_RETURN_SV(*svp);
+    }
+
+    if (readfrom->default_value != NULL)
+    {
+        SV *retval;
+        if (readfrom->default_coderef) {
+            ENTER;
+            SAVETMPS;
+            PUSHMARK(SP);
+            XPUSHs(self);
+            PUTBACK;
+            int number =
+                call_sv(SvRV(readfrom->default_value), G_SCALAR);
+            SPAGAIN;
+            if (number == 1) {
+                retval = newSVsv(POPs);
+            } else {
+                XSRETURN_UNDEF;
+            }
+            PUTBACK;
+            FREETMPS;
+            LEAVE;
+        } else {
+            retval = newSVsv(readfrom->default_value);
+        }
+
+        retval = *hv_store(
+            object, readfrom->accessor_name, readfrom->accessor_len, retval, readfrom->hash);
+        if (!retval) {
+            croak("Mojo::Base::XS PANIC: hv_store failed");
+        }
+
+        XSA_RETURN_SV(retval);
+    }
+    XSRETURN_UNDEF;
 
 
 void
@@ -299,38 +289,6 @@ CODE:
     }
     PUSHs(caller_obj);
 
-#define CONSTRUCTOR_BODY                                                         \
-    classname = SvROK(class)       ?                                             \
-        sv_reftype(SvRV(class), 1) :                                             \
-        SvPV_nolen_const(class);                                                 \
-    hash = newHV();                                                              \
-    if (items > 2) {                                                             \
-        for (iStack = 1; iStack < items; iStack += 2) {                          \
-            /* we could check for the hv_store_ent return value,          */     \
-            /* but perl doesn't in this situation (see pp_anonhash)       */     \
-            (void)hv_store_ent(                                                  \
-                hash, ST(iStack),                                                \
-                newSVsv(iStack > items ? &PL_sv_undef : ST(iStack+1)), 0);       \
-        }                                                                        \
-    } else if (items > 1) {                                                      \
-        HV *hv_hashopt;                                                          \
-        SV *optref = ST(1);                                                      \
-        if (SvROK(optref) &&                                                     \
-            SvTYPE((hv_hashopt = (HV*)SvRV(optref))) == SVt_PVHV) {              \
-            I32 key_len;                                                         \
-            char *key;                                                           \
-            SV *val;                                                             \
-            hv_iterinit(hv_hashopt);                                             \
-            while ((val = hv_iternextsv(hv_hashopt, &key, &key_len))) {          \
-                (void)hv_common_key_len(                                         \
-                    hash, key, key_len,  HV_FETCH_ISSTORE, newSVsv(val), 0);     \
-            }                                                                    \
-        } else {                                                                 \
-            croak("Not a hash reference");                                       \
-        }                                                                        \
-    }                                                                            \
-    obj = sv_bless(newRV_noinc((SV *)hash), gv_stashpv(classname, 1));           \
-    PUSHs(sv_2mortal(obj));                                                      \
 
 void
 constructor(class, ...)
@@ -342,7 +300,39 @@ constructor(class, ...)
     const char* classname;
   PPCODE:
     CXAH_OPTIMIZE_ENTERSUB(constructor);
-    CONSTRUCTOR_BODY
+
+    classname = SvROK(class)       ?
+        sv_reftype(SvRV(class), 1) :
+        SvPV_nolen_const(class);
+    hash = newHV();
+    if (items > 2) {
+        for (iStack = 1; iStack < items; iStack += 2) {
+            /* we could check for the hv_store_ent return value,          */
+            /* but perl doesn't in this situation (see pp_anonhash)       */
+            (void)hv_store_ent(
+                hash, ST(iStack),
+                newSVsv(iStack > items ? &PL_sv_undef : ST(iStack+1)), 0);
+        }
+    } else if (items > 1) {
+        HV *hv_hashopt;
+        SV *optref = ST(1);
+        if (SvROK(optref) &&
+            SvTYPE((hv_hashopt = (HV*)SvRV(optref))) == SVt_PVHV) {
+            I32 key_len;
+            char *key;
+            SV *val;
+            hv_iterinit(hv_hashopt);
+            while ((val = hv_iternextsv(hv_hashopt, &key, &key_len))) {
+                (void)hv_common_key_len(
+                    hash, key, key_len,  HV_FETCH_ISSTORE, newSVsv(val), 0);
+            }
+        } else {
+            croak("Not a hash reference");
+        }
+    }
+    obj = sv_bless(newRV_noinc((SV *)hash), gv_stashpv(classname, 1));
+    PUSHs(sv_2mortal(obj));
+
 
 void
 newxs_constructor(name)
