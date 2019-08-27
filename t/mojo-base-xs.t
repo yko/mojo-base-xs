@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 use lib 't/lib';
 
-use Test::More tests => 17;
+use Test::More tests => 21;
 
 use Mojo::Base::XS;
 
@@ -57,3 +57,16 @@ is $self->heads, 1, "accessor does not create alias in lvalue context";
 (sub { $_[0] = "object modified in lvalue" })->($self->heads(1));
 
 isa_ok $self, 'BaseTestXS', "accessor does not create alias to object in lvalue context";
+
+# Basic tests for weaken
+
+use Scalar::Util 'isweak';
+
+is_deeply $self->weakling, ['weakened!'], "weak default value";
+ok isweak($self->{weakling}), "weak - default value is weak";
+
+my $new_value = [ 'still weakened' ];
+$self->weakling($new_value);
+
+ok isweak($self->{weakling}), "weak - new value is weak";
+is_deeply $self->weakling, [ 'still weakened' ], "weak default value";

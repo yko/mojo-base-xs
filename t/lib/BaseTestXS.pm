@@ -12,4 +12,7 @@ __PACKAGE__->attr('name' => sub { 'Named!' });
 __PACKAGE__->attr('def_array' => sub { ['Named!'] });
 __PACKAGE__->attr('dies_in_default' => sub { die "Exception thrown" });
 
+my $GLOBAL_WEAK = ['weakened!'];
+has 'weakling' => sub { $GLOBAL_WEAK }, weak => 1;
+
 1;
