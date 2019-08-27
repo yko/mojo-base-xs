@@ -12,8 +12,23 @@ perl:
   - "5.10-shrplib"
 
 install:
-    - cpanm --notest Module::Install::XSUtil Module::Install::AuthorTests Mojolicious
-    - cpanm -v --installdeps --notest .
+    - cpanm --quiet --notest Module::Install::XSUtil Module::Install::AuthorTests Mojolicious
+    - cpanm --quiet --installdeps --notest .
+
+script:
+    - perl Makefile.PL && make
+    - prove --blib --recurse t
+
+    - git clone --branch=master https://github.com/kraih/mojo
+    - git clone mojo/.git mojo_release
+    # Set mojo_release to the latest tag
+    - git -C mojo_release checkout $(git -C mojo_release tag | tail -1)
+
+    - echo "Testing compatibility with Mojolicious master: $(git -C mojo log -1 --oneline)"
+    - HARNESS_PERL_SWITCHES="-Mlib=$TRAVIS_BUILD_DIR/lib -Mblib=$TRAVIS_BUILD_DIR/blib  -MMojo::Base::XS=-infect" prove --blib --recurse --QUIET --jobs $(nproc) mojo/t
+    - echo "Testing compatibility with Mojolicious latest release: $(git -C mojo_release tag | tail -1)"
+    - cd mojo && git checkout $(git tag | tail -1)
+    - HARNESS_PERL_SWITCHES="-Mlib=$TRAVIS_BUILD_DIR/lib -Mblib=$TRAVIS_BUILD_DIR/blib  -MMojo::Base::XS=-infect" prove --blib --recurse --QUIET --jobs $(nproc) mojo_release/t
 
 branches:
   only:
