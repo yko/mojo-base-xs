@@ -139,6 +139,7 @@ STMT_START {                                                                    
   char * subname = (char*)cxa_malloc((subname_len+1));                                       \
   sprintf(subname, "%s::%s", package, name);                                                 \
   autoxs_hashkey *hk_ptr = get_hashkey(aTHX_ subname, subname_len);                          \
+  hk_ptr->weak = weak;                                                                       \
   hk_ptr->key = subname;                                                                     \
   hk_ptr->len = subname_len;                                                                 \
   INSTALL_NEW_CV_WITH_PTR(hk_ptr->key, xsub, hk_ptr);                                        \
@@ -155,6 +156,23 @@ STMT_START {                                                                    
   } else { hk_ptr->default_coderef = 0; }                                                    \
 } STMT_END
 
+#define WEAKEN_SV_IF_NEEDED(sv, classname, classname_len, accessorname, accessorname_len)    \
+STMT_START {                                                                                 \
+  if (SvROK(value)) {                                                                        \
+      HV *pkg = gv_stashpvn(classname, classname_len, TRUE);                                 \
+      if (pkg) {                                                                             \
+          GV * const gv = gv_fetchmethod_pvn_flags(                                          \
+          pkg, accessorname, accessorname_len, 0);                                           \
+          CV *cv;                                                                            \
+          HV *real_pkg;                                                                      \
+          if (gv && isGV(gv) && (cv = GvCV(gv)) && CvXSUB(cv) == CXAH(accessor)) {           \
+              const autoxs_hashkey *hk_ptr = CXAH_GET_HASHKEY;                               \
+              if (hk_ptr != NULL && hk_ptr->weak)                                            \
+                  sv_rvweaken(sv);                                                           \
+          }                                                                                  \
+      }                                                                                      \
+  }                                                                                          \
+} STMT_END                                                                                   \
 
 static Perl_ppaddr_t CXA_DEFAULT_ENTERSUB = NULL;
 
@@ -208,6 +226,9 @@ PPCODE:
     if (items > 1) {
       SV* newvalue = newSVsv(ST(1));
 
+      if (readfrom->weak && SvROK(newvalue)) {
+          sv_rvweaken(newvalue);
+      }
 
       if (NULL == hv_common_key_len(
         object, readfrom->accessor_name, readfrom->accessor_len,
@@ -247,6 +268,10 @@ PPCODE:
             retval = newSVsv(readfrom->default_value);
         }
 
+        if (readfrom->weak && SvROK(retval)) {
+            sv_rvweaken(retval);
+        }
+
         retval = *hv_store(
             object, readfrom->accessor_name, readfrom->accessor_len, retval, readfrom->hash);
         if (!retval) {
@@ -267,10 +292,18 @@ PREINIT:
     const char *caller = SvROK(caller_obj) ?
         sv_reftype(SvRV(caller_obj), TRUE) :
         SvPV_nolen(caller_obj);
+    int i;
+    bool weak = false;
 CODE:
-    if (items > 3) {
-        croak("Attribute generator called with too many arguments");
-        return;
+    /* Check if 'weak' parameter is supplied */
+    for (i = 3; i < items; i += 2) {
+        const char *key = SvPV_nolen(ST(i));
+        if (strcmp(key, "weak") != 0) {
+            croak("Unsupported attribute option");
+        } else if (i+1 < items && SvTRUE(ST(i+1)) != 0) {
+            // Value of 'weak' is true
+            weak = true;
+        }
     }
 
     if (SvROK(name) && SvTYPE(SvRV(name)) == SVt_PVAV) {
@@ -296,43 +329,52 @@ constructor(class, ...)
 PREINIT:
     int iStack;
     HV* hash;
-    SV* obj;
+    SV *value;
     const char* classname;
+    STRLEN classname_len;
 PPCODE:
     CXAH_OPTIMIZE_ENTERSUB(constructor);
 
-    classname = SvROK(class)       ?
-        sv_reftype(SvRV(class), 1) :
-        SvPV_nolen_const(class);
+    if (SvROK(class)) {
+        classname = sv_reftype(SvRV(class), 1);
+        classname_len = strlen(classname);
+    } else {
+        classname = SvPV(class, classname_len);
+    }
     hash = newHV();
     if (items > 2) {
+        STRLEN key_len;
+        const char *key;
         for (iStack = 1; iStack < items; iStack += 2) {
-            /* we could check for the hv_store_ent return value,          */
-            /* but perl doesn't in this situation (see pp_anonhash)       */
-            (void)hv_store_ent(
-                hash, ST(iStack),
-                newSVsv(iStack > items ? &PL_sv_undef : ST(iStack+1)), 0);
+            value = newSVsv(iStack > items ? &PL_sv_undef : ST(iStack+1));
+            key = SvPV(ST(iStack), key_len);
+
+            WEAKEN_SV_IF_NEEDED(value, classname, classname_len, key, key_len);
+
+            (void)hv_common_key_len(hash, key, key_len, HV_FETCH_ISSTORE, value, 0);
         }
     } else if (items > 1) {
         HV *hv_hashopt;
         SV *optref = ST(1);
-        if (SvROK(optref) &&
-            SvTYPE((hv_hashopt = (HV*)SvRV(optref))) == SVt_PVHV) {
+
+        if (SvROK(optref) && SvTYPE((hv_hashopt = (HV*)SvRV(optref))) == SVt_PVHV) {
             I32 key_len;
             char *key;
-            SV *val;
             hv_iterinit(hv_hashopt);
-            while ((val = hv_iternextsv(hv_hashopt, &key, &key_len))) {
-                (void)hv_common_key_len(
-                    hash, key, key_len,  HV_FETCH_ISSTORE, newSVsv(val), 0);
+            while ((value = hv_iternextsv(hv_hashopt, &key, &key_len))) {
+                value = newSVsv(value);
+
+                WEAKEN_SV_IF_NEEDED(value, classname, classname_len, key, key_len);
+
+                (void)hv_common_key_len(hash, key, key_len, HV_FETCH_ISSTORE, value, 0);
             }
         } else {
             croak("Not a hash reference");
         }
     }
-    obj = sv_bless(newRV_noinc((SV *)hash), gv_stashpv(classname, 1));
-    PUSHs(sv_2mortal(obj));
 
+    SV *obj = sv_bless(newRV_noinc((SV *)hash), gv_stashpv(classname, 1));
+    PUSHs(sv_2mortal(obj));
 
 void
 newxs_constructor(name)

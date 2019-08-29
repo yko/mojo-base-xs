@@ -33,6 +33,7 @@ struct autoxs_hashkey_str {
    */
 /* Mojo::Base::XS injection */
   char* accessor_name;
+  bool  weak;
   bool  default_coderef;
   I32 accessor_len;
   SV *default_value;
