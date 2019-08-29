@@ -12,23 +12,32 @@ perl:
   - "5.10-shrplib"
 
 install:
-    - cpanm --quiet --notest Module::Install::XSUtil Module::Install::AuthorTests Mojolicious
+    - cpanm --quiet --notest Module::Install::XSUtil Module::Install::AuthorTests
     - cpanm --quiet --installdeps --notest .
 
-script:
     - perl Makefile.PL && make
-    - prove --blib --recurse t
 
     - git clone --branch=master https://github.com/kraih/mojo
-    - git clone mojo/.git mojo_release
-    # Set mojo_release to the latest tag
-    - git -C mojo_release checkout $(git -C mojo_release tag | tail -1)
+    # Clone mojo_release to the latest tag
+    - git clone --branch="$(git -C mojo tag | tail -1)" mojo/.git mojo_release
 
-    - echo "Testing compatibility with Mojolicious master: $(git -C mojo log -1 --oneline)"
-    - HARNESS_PERL_SWITCHES="-Mlib=$TRAVIS_BUILD_DIR/lib -Mblib=$TRAVIS_BUILD_DIR/blib  -MMojo::Base::XS=-infect" prove --blib --recurse --QUIET --jobs $(nproc) mojo/t
-    - echo "Testing compatibility with Mojolicious latest release: $(git -C mojo_release tag | tail -1)"
-    - cd mojo && git checkout $(git tag | tail -1)
-    - HARNESS_PERL_SWITCHES="-Mlib=$TRAVIS_BUILD_DIR/lib -Mblib=$TRAVIS_BUILD_DIR/blib  -MMojo::Base::XS=-infect" prove --blib --recurse --QUIET --jobs $(nproc) mojo_release/t
+script:
+    - echo "Testing Mojo::Base::XS standalone"
+    - prove --blib --recurse t
+
+    - echo "Testing Mojo::Base::XS with Mojolicious master"
+    - HARNESS_PERL_SWITCHES="-Mlib=$TRAVIS_BUILD_DIR/mojo/lib" prove --blib --recurse t
+
+    - echo "Testing Mojo::Base::XS with Mojolicious latest release"
+    - HARNESS_PERL_SWITCHES="-Mlib=$TRAVIS_BUILD_DIR/mojo_release/lib" prove --blib --recurse t
+
+    - echo "Testing compatibility with Mojolicious master through Mojolicious test suite"
+    - git -C mojo log -1 --oneline
+    - HARNESS_PERL_SWITCHES="-Mlib=$TRAVIS_BUILD_DIR/mojo/lib -MMojo::Base::XS=-infect" prove --blib --recurse --QUIET --jobs $(nproc) mojo/t
+
+    - echo "Testing compatibility with Mojolicious latest release"
+    - git -C mojo_release tag | tail -1
+    - HARNESS_PERL_SWITCHES="-Mlib=$TRAVIS_BUILD_DIR/mojo_release/lib   -MMojo::Base::XS=-infect" prove --blib --recurse --QUIET --jobs $(nproc) mojo_release/t
 
 branches:
   only:
