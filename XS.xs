@@ -138,22 +138,27 @@ STMT_START {                                                                    
   const U32 subname_len = key_len + package_len + 2;                                         \
   char * subname = (char*)cxa_malloc((subname_len+1));                                       \
   sprintf(subname, "%s::%s", package, name);                                                 \
+                                                                                             \
   autoxs_hashkey *hk_ptr = get_hashkey(aTHX_ subname, subname_len);                          \
   hk_ptr->weak = weak;                                                                       \
   hk_ptr->key = subname;                                                                     \
   hk_ptr->len = subname_len;                                                                 \
-  INSTALL_NEW_CV_WITH_PTR(hk_ptr->key, xsub, hk_ptr);                                        \
   hk_ptr->default_value = default_value;                                                     \
   hk_ptr->accessor_name = (char*)cxa_malloc((key_len+1));                                    \
   hk_ptr->accessor_len = key_len;                                                            \
   cxa_memcpy(hk_ptr->accessor_name, name, key_len);                                          \
   hk_ptr->accessor_name[key_len] = 0;                                                        \
-  PERL_HASH(hk_ptr->hash, hk_ptr->accessor_name, key_len);                                   \
+                                                                                             \
   if (default_value != NULL) {                                                               \
       SvREFCNT_inc(default_value);                                                           \
       hk_ptr->default_coderef = SvROK(hk_ptr->default_value) &&                              \
         SvTYPE(SvRV(hk_ptr->default_value)) == SVt_PVCV;                                     \
   } else { hk_ptr->default_coderef = 0; }                                                    \
+                                                                                             \
+  PERL_HASH(hk_ptr->hash, hk_ptr->accessor_name, key_len);                                   \
+                                                                                             \
+  INSTALL_NEW_CV_WITH_PTR(hk_ptr->key, xsub, hk_ptr);                                        \
+                                                                                             \
 } STMT_END
 
 #define WEAKEN_SV_IF_NEEDED(sv, classname, classname_len, accessorname, accessorname_len)    \
@@ -173,6 +178,10 @@ STMT_START {                                                                    
       }                                                                                      \
   }                                                                                          \
 } STMT_END                                                                                   \
+
+/* Get the const hash key struct from the global storage */
+#define CXAH_GET_HASHKEY ((autoxs_hashkey *) XSANY.any_ptr)
+
 
 static Perl_ppaddr_t CXA_DEFAULT_ENTERSUB = NULL;
 
@@ -197,12 +206,10 @@ void
 __entersub_optimized__()
 CODE:
 #ifdef CXA_ENABLE_ENTERSUB_OPTIMIZATION
-        XSRETURN_YES;
+    XSRETURN_YES;
 #else
-        XSRETURN_NO;
+    XSRETURN_NO;
 #endif
-
-#define CXAH_GET_HASHKEY ((autoxs_hashkey *) XSANY.any_ptr)
 
 
 void
@@ -210,9 +217,10 @@ accessor(self, ...)
     SV* self;
 ALIAS:
 INIT:
-    /* Get the const hash key struct from the global storage */
     const autoxs_hashkey * readfrom = CXAH_GET_HASHKEY;
     SV** svp;
+    SV* self = ST(0);
+    HV *object = (HV*)SvRV(self);
 PPCODE:
     CXAH_OPTIMIZE_ENTERSUB(accessor);
     if (!SvROK(self) || SvTYPE(SvRV(self)) != SVt_PVHV)
@@ -222,7 +230,8 @@ PPCODE:
             readfrom->accessor_name,
             SvPV_nolen(self)
         );
-    HV *object = (HV*)SvRV(self);
+
+    /* Set: value passed as the 2nd parameter */
     if (items > 1) {
       SV* newvalue = newSVsv(ST(1));
 
@@ -237,6 +246,7 @@ PPCODE:
         XSA_RETURN_SV(self);
     }
 
+    /* Get: check if the value already defined */
     if ((svp = CXSA_HASH_FETCH(
             object, readfrom->accessor_name, readfrom->accessor_len,
             readfrom->hash)))
@@ -244,6 +254,7 @@ PPCODE:
         XSA_RETURN_SV(*svp);
     }
 
+    /* Get: no value defined, build from default value or a callback */
     if (readfrom->default_value != NULL)
     {
         SV *retval;
@@ -268,6 +279,7 @@ PPCODE:
             retval = newSVsv(readfrom->default_value);
         }
 
+        /* Weaken the reference if where applicable */
         if (readfrom->weak && SvROK(retval)) {
             sv_rvweaken(retval);
         }
@@ -288,12 +300,13 @@ attr(caller_obj, name, ...)
     SV *caller_obj;
     SV *name;
 PREINIT:
+    CV* cv;
+    int i;
+    bool weak = false;
     SV *default_value = items > 2 ? ST(2) : NULL;
     const char *caller = SvROK(caller_obj) ?
         sv_reftype(SvRV(caller_obj), TRUE) :
         SvPV_nolen(caller_obj);
-    int i;
-    bool weak = false;
 CODE:
     /* Check if 'weak' parameter is supplied */
     for (i = 3; i < items; i += 2) {
@@ -301,11 +314,12 @@ CODE:
         if (strcmp(key, "weak") != 0) {
             croak("Unsupported attribute option");
         } else if (i+1 < items && SvTRUE(ST(i+1)) != 0) {
-            // Value of 'weak' is true
+            /* Value of 'weak' is true */
             weak = true;
         }
     }
 
+    /* The first argument is an arrayref of attribute names */
     if (SvROK(name) && SvTYPE(SvRV(name)) == SVt_PVAV) {
         int i;
         for (i = av_len((AV*)SvRV(name)); i >= 0; i--) {
@@ -315,8 +329,10 @@ CODE:
                 caller, CXAH(accessor),
                 SvPV_nolen(*elem), default_value);
         }
-    } else {
-        CV* cv;
+    }
+
+    /* Treat the first argument as a scalar */
+    else {
         INSTALL_NEW_CV_HASH_OBJ(
             caller, CXAH(accessor), SvPV_nolen(name), default_value);
     }
@@ -328,10 +344,10 @@ constructor(class, ...)
     SV* class;
 PREINIT:
     int iStack;
-    HV* hash;
     SV *value;
     const char* classname;
     STRLEN classname_len;
+    HV* hash = newHV();
 PPCODE:
     CXAH_OPTIMIZE_ENTERSUB(constructor);
 
@@ -341,7 +357,7 @@ PPCODE:
     } else {
         classname = SvPV(class, classname_len);
     }
-    hash = newHV();
+
     if (items > 2) {
         STRLEN key_len;
         const char *key;
@@ -376,11 +392,13 @@ PPCODE:
     SV *obj = sv_bless(newRV_noinc((SV *)hash), gv_stashpv(classname, 1));
     PUSHs(sv_2mortal(obj));
 
+
 void
 newxs_constructor(name)
     char* name;
 PPCODE:
     INSTALL_NEW_CV(name, CXAH(constructor));
+
 
 void
 newxs_attr(name)
