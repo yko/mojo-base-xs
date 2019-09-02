@@ -219,7 +219,6 @@ ALIAS:
 INIT:
     const autoxs_hashkey * readfrom = CXAH_GET_HASHKEY;
     SV** svp;
-    SV* self = ST(0);
     HV *object = (HV*)SvRV(self);
 PPCODE:
     CXAH_OPTIMIZE_ENTERSUB(accessor);
